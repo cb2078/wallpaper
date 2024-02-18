@@ -4,6 +4,7 @@
 *.lnk
 *.obj
 *.pdb
+*.png
 *.rdbg
 main
 shell.bat

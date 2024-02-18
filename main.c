@@ -106,7 +106,7 @@ static bool attractor(void)
 // 	return (char)(0xff * S);
 // }
 
-static int write_bmp(char *name)
+static int write_image(char *name)
 {
 	char *buf = malloc(HEIGHT * WIDTH * sizeof(char) * 3);
 	memset(buf, 0x111111, HEIGHT * WIDTH * sizeof(char) * 3);
@@ -121,7 +121,7 @@ static int write_bmp(char *name)
 		buf[i * WIDTH * 3 + j + 2] = (char)(0xff * (float)v[n] / v_max);
 	}
 
-	bool result = stbi_write_bmp(name, WIDTH, HEIGHT, 3, buf);
+	bool result = stbi_write_png(name, WIDTH, HEIGHT, 3, buf, WIDTH * sizeof(char) * 3);
 	if (!result)
 		printf("Failed to write %s\n", name);
 	else
@@ -144,8 +144,8 @@ int main(void)
 
 		// write to an image
 		char buf[20];
-		snprintf(buf, 20, "%d.bmp", i);
-		write_bmp(buf);
+		snprintf(buf, 20, "%d.png", i);
+		write_image(buf);
 	}
 
 	puts("done");
