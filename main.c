@@ -10,7 +10,7 @@
 #include "stb_image_write.h"
 
 #define CUTOFF	10000
-#define ITERATIONS	25'100'000
+#define ITERATIONS	25100000
 #if 1
 #define WIDTH	5000
 #define HEIGHT	3000
