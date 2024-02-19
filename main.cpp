@@ -8,16 +8,17 @@
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
+#include "stb_image_resize2.h"
 
-#define CUTOFF	10000
-#define ITERATIONS	9100000
-#if 1
-#define WIDTH	5000
-#define HEIGHT	3000
-#else
-#define WIDTH 5120
-#define HEIGHT 2160
-#endif
+const int CUTOFF = 10000;
+const int D_WIDTH = 3840;
+const int D_HEIGHT = 2860;
+const float DENSITY = 0.67f;
+const int DOWNSCALE = 3;
+const int WIDTH = D_WIDTH * DOWNSCALE;
+const int HEIGHT = D_HEIGHT * DOWNSCALE;
+const int ITERATIONS = (int)(WIDTH * HEIGHT * DENSITY);
 
 #define SAMPLES 32
 
@@ -25,8 +26,8 @@
 #define MIN(x, y)	((x) < (y) ? (x) : (y))
 
 static double c[6][2];
-static double x[ITERATIONS][2];
-static double v[ITERATIONS];
+static double (*x)[2];
+static double (*v);
 static double xe[2];	// for lyapunov exponent
 static double x_min[2];
 static double x_max[2];
@@ -108,10 +109,14 @@ static bool attractor(void)
 
 static int write_image(char *name)
 {
-	static char buf[HEIGHT][WIDTH][3];
-	memset(buf, 0x00, sizeof(buf));
-	static unsigned mat[HEIGHT][WIDTH];
-	memset(mat, 0, sizeof(mat));
+	static char (*buf)[WIDTH][3] = 0;
+	if (!buf)
+		buf = (char (*)[WIDTH][3])malloc(sizeof(char) * HEIGHT * WIDTH * 3);
+	memset(buf, 0, sizeof(char) * HEIGHT * WIDTH * 3);
+	static unsigned (*mat)[WIDTH] = 0;
+	if (!mat)
+		mat = (unsigned (*)[WIDTH])malloc(sizeof(unsigned) * HEIGHT * WIDTH);
+	memset(mat, 0, sizeof(unsigned) * HEIGHT * WIDTH);
 
 	int num = 0;
 	for (int n = CUTOFF; n < ITERATIONS; ++n) {
@@ -130,7 +135,12 @@ static int write_image(char *name)
 			buf[i][j][0] = (char)MIN(0xfe, 0xfe * mat[i][j] / avg);
 		}
 
-	bool result = stbi_write_png(name, WIDTH, HEIGHT, 3, buf, WIDTH * sizeof(char) * 3);
+	static char rbuf[D_HEIGHT][D_WIDTH][3];
+	memset(rbuf, 0, sizeof(rbuf));
+	stbir_resize_uint8_linear((unsigned char *)buf, WIDTH, HEIGHT, WIDTH * sizeof(char) * 3,
+	                          (unsigned char *)rbuf, WIDTH / DOWNSCALE, HEIGHT / DOWNSCALE, WIDTH / DOWNSCALE * sizeof(char) * 3,
+	                          (stbir_pixel_layout)3);
+	bool result = stbi_write_png(name, D_WIDTH, D_HEIGHT, 3, rbuf, D_WIDTH * sizeof(char) * 3);
 	if (!result)
 		printf("Failed to write %s\n", name);
 	else
@@ -143,6 +153,8 @@ int main(void)
 	srand((unsigned)time(0));
 
 	// initialise
+	x = (double (*)[2])malloc(ITERATIONS * sizeof(double [2]));
+	v = (double *)malloc(ITERATIONS * sizeof(double));
 	for (int i = 0; i < 2; ++i) {
 		x[0][i] = (double)rand() / RAND_MAX - 0.5;
 	}
