@@ -108,17 +108,17 @@ static bool attractor(void)
 
 static int write_image(char *name)
 {
-	char *buf = malloc(HEIGHT * WIDTH * sizeof(char) * 3);
-	memset(buf, 0x111111, HEIGHT * WIDTH * sizeof(char) * 3);
+	static char buf[HEIGHT][WIDTH][3];
+	memset(buf, 0, sizeof(buf));
 
 	for (int n = CUTOFF; n < ITERATIONS; ++n) {
 		int i = (int)((HEIGHT - 1) * (x[n][0] - x_min[0]) / (x_max[0] - x_min[0]));
-		int j = (int)((WIDTH - 1) * (x[n][1] - x_min[1]) / (x_max[1] - x_min[1])) * 3;
+		int j = (int)((WIDTH - 1) * (x[n][1] - x_min[1]) / (x_max[1] - x_min[1]));
 		assert(i >= 0 && i < HEIGHT);
-		assert(j >= 0 && j < WIDTH * 3);
-		buf[i * WIDTH * 3 + j + 1] = (char)MIN(0x7f, (int)buf[i * WIDTH * 3 + j + 1] + 0x06);
-		buf[i * WIDTH * 3 + j + 0] = (char)MIN(0xfe, (int)buf[i * WIDTH * 3 + j + 0] + 0x0b);
-		buf[i * WIDTH * 3 + j + 2] = (char)(0xff * (float)v[n] / v_max);
+		assert(j >= 0 && j < WIDTH);
+		buf[i][j][1] = (char)MIN(0x7f, (int)buf[i][j][1] + 0x06);
+		buf[i][j][0] = (char)MIN(0xfe, (int)buf[i][j][0] + 0x0b);
+		buf[i][j][2] = (char)(0xff * (float)v[n] / v_max);
 	}
 
 	bool result = stbi_write_png(name, WIDTH, HEIGHT, 3, buf, WIDTH * sizeof(char) * 3);
