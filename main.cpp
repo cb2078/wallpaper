@@ -15,7 +15,7 @@ const int CUTOFF = 10000;
 const int D_WIDTH = 3840;
 const int D_HEIGHT = 2860;
 const float DENSITY = 0.67f;
-const int DOWNSCALE = 3;
+const int DOWNSCALE = 2;
 const int WIDTH = D_WIDTH * DOWNSCALE;
 const int HEIGHT = D_HEIGHT * DOWNSCALE;
 const int ITERATIONS = (int)(WIDTH * HEIGHT * DENSITY);
@@ -26,8 +26,8 @@ const int ITERATIONS = (int)(WIDTH * HEIGHT * DENSITY);
 #define MIN(x, y)	((x) < (y) ? (x) : (y))
 
 static double c[6][2];
-static double (*x)[2];
-static double (*v);
+static double x[ITERATIONS][2];
+static double v[ITERATIONS];
 static double xe[2];	// for lyapunov exponent
 static double x_min[2];
 static double x_max[2];
@@ -109,13 +109,9 @@ static bool attractor(void)
 
 static int write_image(char *name)
 {
-	static char (*buf)[WIDTH][3] = 0;
-	if (!buf)
-		buf = (char (*)[WIDTH][3])malloc(sizeof(char) * HEIGHT * WIDTH * 3);
+	static char buf[HEIGHT][WIDTH][3];
 	memset(buf, 0, sizeof(char) * HEIGHT * WIDTH * 3);
-	static unsigned (*mat)[WIDTH] = 0;
-	if (!mat)
-		mat = (unsigned (*)[WIDTH])malloc(sizeof(unsigned) * HEIGHT * WIDTH);
+	static unsigned mat[HEIGHT][WIDTH];
 	memset(mat, 0, sizeof(unsigned) * HEIGHT * WIDTH);
 
 	int num = 0;
@@ -153,8 +149,6 @@ int main(void)
 	srand((unsigned)time(0));
 
 	// initialise
-	x = (double (*)[2])malloc(ITERATIONS * sizeof(double [2]));
-	v = (double *)malloc(ITERATIONS * sizeof(double));
 	for (int i = 0; i < 2; ++i) {
 		x[0][i] = (double)rand() / RAND_MAX - 0.5;
 	}
