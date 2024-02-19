@@ -10,7 +10,7 @@
 #include "stb_image_write.h"
 
 #define CUTOFF	10000
-#define ITERATIONS	25100000
+#define ITERATIONS	9100000
 #if 1
 #define WIDTH	5000
 #define HEIGHT	3000
@@ -109,17 +109,26 @@ static bool attractor(void)
 static int write_image(char *name)
 {
 	static char buf[HEIGHT][WIDTH][3];
-	memset(buf, 0, sizeof(buf));
+	memset(buf, 0x00, sizeof(buf));
+	static unsigned mat[HEIGHT][WIDTH];
+	memset(mat, 0, sizeof(mat));
 
+	int num = 0;
 	for (int n = CUTOFF; n < ITERATIONS; ++n) {
 		int i = (int)((HEIGHT - 1) * (x[n][0] - x_min[0]) / (x_max[0] - x_min[0]));
 		int j = (int)((WIDTH - 1) * (x[n][1] - x_min[1]) / (x_max[1] - x_min[1]));
 		assert(i >= 0 && i < HEIGHT);
 		assert(j >= 0 && j < WIDTH);
-		buf[i][j][1] = (char)MIN(0x7f, (int)buf[i][j][1] + 0x06);
-		buf[i][j][0] = (char)MIN(0xfe, (int)buf[i][j][0] + 0x0b);
+		mat[i][j] += 1; assert(mat[i][j] != 0); // overflow
+		num += buf[i][j][2] == 0x00;
 		buf[i][j][2] = (char)(0xff * (float)v[n] / v_max);
 	}
+	float avg = ITERATIONS / (float)num;
+	for (int i = 0; i < HEIGHT; ++i)
+		for (int j = 0; j < WIDTH; ++j) {
+			buf[i][j][1] = (char)MIN(0x7f, 0x7f * mat[i][j] / avg);
+			buf[i][j][0] = (char)MIN(0xfe, 0xfe * mat[i][j] / avg);
+		}
 
 	bool result = stbi_write_png(name, WIDTH, HEIGHT, 3, buf, WIDTH * sizeof(char) * 3);
 	if (!result)
