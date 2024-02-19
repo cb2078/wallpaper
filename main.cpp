@@ -12,9 +12,9 @@
 #include "stb_image_resize2.h"
 
 const int CUTOFF = 10000;
-const int WIDTH = 3840;
-const int HEIGHT = 2860;
-const int DENSITY = 16;
+const int WIDTH = 3072;
+const int HEIGHT = 2304;
+const int DENSITY = 50;
 const int ITERATIONS = WIDTH * HEIGHT * DENSITY;
 const double INTENSITY = 16;
 
@@ -25,11 +25,11 @@ const double INTENSITY = 16;
 
 static double c[6][2];
 static double (*x)[2];
-static double (*v);
+static double (*v)[2];
 static double xe[2];	// for lyapunov exponent
 static double x_min[2];
 static double x_max[2];
-static double v_max;
+static double v_max[2];
 
 static double dst(double x0[2], double x1[2])
 {
@@ -55,7 +55,7 @@ static void iteration(double x0[2], double x1[2])
 static bool attractor(void)
 {
 	// initialize parameters
-	v_max = 0;
+	v_max[0] = v_max[1] = 0;
 	x_min[0] = x_min[1] = 1e10;
 	x_max[0] = x_max[1] = -1e10;
 	for (int i = 0; i < 2; ++i)
@@ -70,12 +70,13 @@ static bool attractor(void)
 
 	for (int n = 1; n <= ITERATIONS; ++n) {
 		iteration(x[n - 1], x[n]);
-		v[n - 1] = dst(x[n], x[n - 1]);
-		v_max = MAX(v[n - 1], v_max);
+		v[n - 1][0] = x[n][0] - x[n - 1][0];
+		v[n - 1][1] = x[n][1] - x[n - 1][1];
 		if (n > CUTOFF)
 			for (int i = 0; i < 2; ++i) {
-				x_max[i] = x_max[i] > x[n][i] ? x_max[i] : x[n][i];
-				x_min[i] = x_min[i] < x[n][i] ? x_min[i] : x[n][i];
+				x_max[i] = MAX(x_max[i], x[n][i]);
+				x_min[i] = MIN(x_min[i], x[n][i]);
+				v_max[i] = MAX(v[n - 1][i], v_max[i]);
 			}
 		iteration(xe, xe);
 
@@ -97,33 +98,37 @@ static bool attractor(void)
 	return true;
 }
 
-// static double srgb(double L)
-// {
-// 	return L <= 0.0031308 ? L * 12.92 :
-// 		1.055 * pow(L, 1 / 2.44) - 0.055;
-// }
+static char srgb(unsigned char a)
+{
+	double L = (double)a / 0xff;
+ 	double S = L <= 0.0031308 ? L * 12.92 :
+		1.055 * pow(L, 1 / 2.44) - 0.055;
+	return (unsigned char)(0xff * MIN(1, MAX(0, S)));
+}
 
 static int write_image(char *name)
 {
 	static char buf[HEIGHT][WIDTH][3];
 	memset(buf, 0, sizeof(char) * HEIGHT * WIDTH * 3);
-	static unsigned mat[HEIGHT][WIDTH];
-	memset(mat, 0, sizeof(unsigned) * HEIGHT * WIDTH);
+	static double info[HEIGHT][WIDTH][4];
+	memset(info, 0, sizeof(double) * HEIGHT * WIDTH * 4);
 
 	for (int n = CUTOFF; n < ITERATIONS; ++n) {
 		int i = (int)((HEIGHT - 1) * (x[n][0] - x_min[0]) / (x_max[0] - x_min[0]));
 		int j = (int)((WIDTH - 1) * (x[n][1] - x_min[1]) / (x_max[1] - x_min[1]));
 		assert(i >= 0 && i < HEIGHT);
 		assert(j >= 0 && j < WIDTH);
-		mat[i][j] += 1;
+		info[i][j][0] = MAX(0, -v[n][0]) / v_max[0];
+		info[i][j][1] = MAX(0, v[n][0]) / v_max[0];
+		info[i][j][2] = fabs(v[n][1]) / v_max[1];
+		info[i][j][3] += 1;
 	}
 
 	for (int i = 0; i < HEIGHT; ++i)
 		for (int j = 0; j < WIDTH; ++j) {
-			double val = MIN(0xff, (double)mat[i][j] * INTENSITY / DENSITY);
-			buf[i][j][0] = (char)(val / 2);
-			buf[i][j][1] = (char)(val / 6);
-			buf[i][j][2] = (char)val;
+			double val =info[i][j][3] * INTENSITY / DENSITY;
+			for (int k = 0; k < 3; ++k)
+				buf[i][j][k] = srgb((char)MIN(0xff, val * info[i][j][k]));
 		}
 
 	bool result = stbi_write_png(name, WIDTH, HEIGHT, 3, buf, WIDTH * sizeof(char) * 3);
@@ -136,11 +141,11 @@ static int write_image(char *name)
 
 int main(void)
 {
-	srand((unsigned)time(0));
+	/* srand((unsigned)time(0)); */
 
 	// initialise
 	x = (double (*)[2])malloc(sizeof(double) * ITERATIONS * 2);
-	v = (double *)malloc(sizeof(double) * ITERATIONS);
+	v = (double (*)[2])malloc(sizeof(double) * ITERATIONS * 2);
 	for (int i = 0; i < 2; ++i) {
 		x[0][i] = (double)rand() / RAND_MAX - 0.5;
 	}
