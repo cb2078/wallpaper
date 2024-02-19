@@ -12,13 +12,11 @@
 #include "stb_image_resize2.h"
 
 const int CUTOFF = 10000;
-const int D_WIDTH = 3840;
-const int D_HEIGHT = 2860;
-const float DENSITY = 0.67f;
-const int DOWNSCALE = 2;
-const int WIDTH = D_WIDTH * DOWNSCALE;
-const int HEIGHT = D_HEIGHT * DOWNSCALE;
-const int ITERATIONS = (int)(WIDTH * HEIGHT * DENSITY);
+const int WIDTH = 3840;
+const int HEIGHT = 2860;
+const int DENSITY = 16;
+const int ITERATIONS = WIDTH * HEIGHT * DENSITY;
+const double INTENSITY = 16;
 
 #define SAMPLES 32
 
@@ -26,8 +24,8 @@ const int ITERATIONS = (int)(WIDTH * HEIGHT * DENSITY);
 #define MIN(x, y)	((x) < (y) ? (x) : (y))
 
 static double c[6][2];
-static double x[ITERATIONS][2];
-static double v[ITERATIONS];
+static double (*x)[2];
+static double (*v);
 static double xe[2];	// for lyapunov exponent
 static double x_min[2];
 static double x_max[2];
@@ -99,12 +97,10 @@ static bool attractor(void)
 	return true;
 }
 
-// static char srgb(char a)
+// static double srgb(double L)
 // {
-// 	double L = (float)a / 0xff;
-// 	double S = L <= 0.0031308 ? L * 12.92 :
+// 	return L <= 0.0031308 ? L * 12.92 :
 // 		1.055 * pow(L, 1 / 2.44) - 0.055;
-// 	return (char)(0xff * S);
 // }
 
 static int write_image(char *name)
@@ -114,29 +110,23 @@ static int write_image(char *name)
 	static unsigned mat[HEIGHT][WIDTH];
 	memset(mat, 0, sizeof(unsigned) * HEIGHT * WIDTH);
 
-	int num = 0;
 	for (int n = CUTOFF; n < ITERATIONS; ++n) {
 		int i = (int)((HEIGHT - 1) * (x[n][0] - x_min[0]) / (x_max[0] - x_min[0]));
 		int j = (int)((WIDTH - 1) * (x[n][1] - x_min[1]) / (x_max[1] - x_min[1]));
 		assert(i >= 0 && i < HEIGHT);
 		assert(j >= 0 && j < WIDTH);
-		mat[i][j] += 1; assert(mat[i][j] != 0); // overflow
-		num += buf[i][j][2] == 0x00;
-		buf[i][j][2] = (char)(0xff * (float)v[n] / v_max);
+		mat[i][j] += 1;
 	}
-	float avg = ITERATIONS / (float)num;
+
 	for (int i = 0; i < HEIGHT; ++i)
 		for (int j = 0; j < WIDTH; ++j) {
-			buf[i][j][1] = (char)MIN(0x7f, 0x7f * mat[i][j] / avg);
-			buf[i][j][0] = (char)MIN(0xfe, 0xfe * mat[i][j] / avg);
+			double val = MIN(0xff, (double)mat[i][j] * INTENSITY / DENSITY);
+			buf[i][j][0] = (char)(val / 2);
+			buf[i][j][1] = (char)(val / 6);
+			buf[i][j][2] = (char)val;
 		}
 
-	static char rbuf[D_HEIGHT][D_WIDTH][3];
-	memset(rbuf, 0, sizeof(rbuf));
-	stbir_resize_uint8_linear((unsigned char *)buf, WIDTH, HEIGHT, WIDTH * sizeof(char) * 3,
-	                          (unsigned char *)rbuf, WIDTH / DOWNSCALE, HEIGHT / DOWNSCALE, WIDTH / DOWNSCALE * sizeof(char) * 3,
-	                          (stbir_pixel_layout)3);
-	bool result = stbi_write_png(name, D_WIDTH, D_HEIGHT, 3, rbuf, D_WIDTH * sizeof(char) * 3);
+	bool result = stbi_write_png(name, WIDTH, HEIGHT, 3, buf, WIDTH * sizeof(char) * 3);
 	if (!result)
 		printf("Failed to write %s\n", name);
 	else
@@ -149,6 +139,8 @@ int main(void)
 	srand((unsigned)time(0));
 
 	// initialise
+	x = (double (*)[2])malloc(sizeof(double) * ITERATIONS * 2);
+	v = (double *)malloc(sizeof(double) * ITERATIONS);
 	for (int i = 0; i < 2; ++i) {
 		x[0][i] = (double)rand() / RAND_MAX - 0.5;
 	}
