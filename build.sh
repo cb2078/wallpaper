@@ -1,2 +1,2 @@
 #!/usr/bin/env sh
-gcc -Wall -std=c99 -lm -o main main.c
+g++ -Wall -lm -O2 -o main main.cpp
