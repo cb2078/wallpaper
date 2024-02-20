@@ -1,4 +1,3 @@
-use less memory (charlie)
 gui (imgui + glfw + opengl)
 	sliders
 	buttons
