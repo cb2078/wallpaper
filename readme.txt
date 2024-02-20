@@ -10,3 +10,4 @@ other stuff (becca)
 website
 load config to a file to save recompiling
 save attractor coefficients
+sort out weird colour blending
