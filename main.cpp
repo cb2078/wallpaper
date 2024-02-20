@@ -110,8 +110,8 @@ static int write_image(char *name)
 {
 	static char buf[HEIGHT][WIDTH][3];
 	memset(buf, 0, sizeof(char) * HEIGHT * WIDTH * 3);
-	static double info[HEIGHT][WIDTH][4];
-	memset(info, 0, sizeof(double) * HEIGHT * WIDTH * 4);
+	static double info[HEIGHT][WIDTH][3];
+	memset(info, 0, sizeof(double) * HEIGHT * WIDTH * 3);
 
 	double x[2] = {0, 0};
 	for (int n = 0; n < CUTOFF; ++n)
@@ -136,18 +136,15 @@ static int write_image(char *name)
 		if (i < 0 || i >= HEIGHT) continue;
 		if (j < 0 || j >= WIDTH) continue;
 #endif
-		info[i][j][0] = MAX(0, -v[0]) / v_max[0];
-		info[i][j][1] = MAX(0, v[0]) / v_max[0];
-		info[i][j][2] = fabs(v[1]) / v_max[1];
-		info[i][j][3] += 1;
+		info[i][j][0] += MAX(0, -v[0]) / v_max[0];
+		info[i][j][1] += MAX(0, v[0]) / v_max[0];
+		info[i][j][2] += fabs(v[1]) / v_max[1];
 	}
 
 	for (int i = 0; i < HEIGHT; ++i)
-		for (int j = 0; j < WIDTH; ++j) {
-			double val =info[i][j][3] * INTENSITY / DENSITY;
+		for (int j = 0; j < WIDTH; ++j)
 			for (int k = 0; k < 3; ++k)
-				buf[i][j][k] = srgb((char)MIN(0xff, val * info[i][j][k]));
-		}
+				buf[i][j][k] = srgb((char)MIN(0xff, INTENSITY / DENSITY * info[i][j][k]));
 
 	bool result = stbi_write_png(name, WIDTH, HEIGHT, 3, buf, WIDTH * sizeof(char) * 3);
 	if (!result)
