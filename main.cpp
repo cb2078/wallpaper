@@ -1,3 +1,5 @@
+#define _USE_MATH_DEFINES
+
 #include <assert.h>
 #include <float.h>
 #include <math.h>
@@ -106,12 +108,55 @@ static char srgb(unsigned char a)
 	return (unsigned char)(0xff * MIN(1, MAX(0, S)));
 }
 
+static void HSV_to_RGB(double H, double S, double V, char RGB[3])
+{
+	double C = V * S;
+	double HH = H / 60;
+	double X = C * (1 - fabs(fmod(HH, 2) - 1));
+	double RGB1[3];
+	switch ((int)floor(HH)) {
+		case 0:
+			RGB1[0] = C;
+			RGB1[1] = X;
+			RGB1[2] = 0;
+			break;
+		case 1:
+			RGB1[0] = X;
+			RGB1[1] = C;
+			RGB1[2] = 0;
+			break;
+		case 2:
+			RGB1[0] = 0;
+			RGB1[1] = C;
+			RGB1[2] = X;
+			break;
+		case 3:
+			RGB1[0] = 0;
+			RGB1[1] = X;
+			RGB1[2] = C;
+			break;
+		case 4:
+			RGB1[0] = X;
+			RGB1[1] = 0;
+			RGB1[2] = C;
+			break;
+		case 5:
+			RGB1[0] = C;
+			RGB1[1] = 0;
+			RGB1[2] = X;
+			break;
+	}
+	double m = V - C;
+	for (int k = 0; k < 3; ++k)
+		RGB[k] = (char)((RGB1[k] + m) * 0xff);
+}
+
 static int write_image(char *name)
 {
 	static char buf[HEIGHT][WIDTH][3];
 	memset(buf, 0, sizeof(char) * HEIGHT * WIDTH * 3);
-	static double info[HEIGHT][WIDTH][3];
-	memset(info, 0, sizeof(double) * HEIGHT * WIDTH * 3);
+	static double info[HEIGHT][WIDTH][2];	// angle, count
+	memset(info, 0, sizeof(double) * HEIGHT * WIDTH * 2);
 
 	double x[2] = {0, 0};
 	for (int n = 0; n < CUTOFF; ++n)
@@ -136,15 +181,19 @@ static int write_image(char *name)
 		if (i < 0 || i >= HEIGHT) continue;
 		if (j < 0 || j >= WIDTH) continue;
 #endif
-		info[i][j][0] += MAX(0, -v[0]) / v_max[0];
-		info[i][j][1] += MAX(0, v[0]) / v_max[0];
-		info[i][j][2] += fabs(v[1]) / v_max[1];
+		info[i][j][0] = atan2(v[1], v[0]);
+		info[i][j][1] += 1;
 	}
 
 	for (int i = 0; i < HEIGHT; ++i)
-		for (int j = 0; j < WIDTH; ++j)
-			for (int k = 0; k < 3; ++k)
-				buf[i][j][k] = srgb((char)MIN(0xff, INTENSITY / DENSITY * info[i][j][k]));
+		for (int j = 0; j < WIDTH; ++j) {
+			if (0 == info[i][j][1])
+				continue;
+			double H = 180 + (info[i][j][0] * 180 / M_PI);
+			double S = 1;
+			double V = MIN(1, INTENSITY / DENSITY * info[i][j][1] / 0xff);
+			HSV_to_RGB(H, S, V, buf[i][j]);
+		}
 
 	bool result = stbi_write_png(name, WIDTH, HEIGHT, 3, buf, WIDTH * sizeof(char) * 3);
 	if (!result)
