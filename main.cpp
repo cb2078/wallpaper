@@ -9,11 +9,11 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
-const int CUTOFF = 10000;
-const int WIDTH = 3072;
-const int HEIGHT = 2304;
-const int DENSITY = 50;
-const int ITERATIONS = WIDTH * HEIGHT * DENSITY;
+const unsigned CUTOFF = 10000;
+const unsigned WIDTH = 3072;
+const unsigned HEIGHT = 2304;
+const unsigned DENSITY = 50;
+const unsigned ITERATIONS = WIDTH * HEIGHT * DENSITY;
 const double INTENSITY = 16;
 
 #define SAMPLES 32
@@ -68,7 +68,7 @@ static bool attractor(void)
 		for (int j = 0; j < 6; ++j)
 			c[j][i] = (double)rand() / RAND_MAX * 4 - 2;
 
-	for (int n = 0; n < ITERATIONS; ++n) {
+	for (unsigned n = 0; n < ITERATIONS; ++n) {
 		double x_last[2];
 		for (int i = 0; i < 2; ++i)
 			x_last[i] = x[i];
@@ -118,7 +118,7 @@ static int write_image(char *name)
 		iteration(x);
 
 	double v[2] = {0, 0};
-	for (int n = CUTOFF; n < ITERATIONS; ++n) {
+	for (unsigned n = CUTOFF; n < ITERATIONS; ++n) {
 		double x_last[2];
 		for (int i = 0; i < 2; ++i)
 			x_last[i] = x[i];
