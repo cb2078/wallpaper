@@ -161,8 +161,13 @@ static int write_image(char *name)
 	double x[2] = {0, 0};
 	for (unsigned n = 0; n < CUTOFF; ++n)
 		iteration(x);
-
 	double v[2] = {0, 0};
+
+	double range[2] = {x_max[0] - x_min[0], x_max[1] - x_min[1]};
+	int o = range[0] < range[1];
+	double x_scale = (WIDTH - 1) / (x_max[o] - x_min[o]);
+	double y_scale = (HEIGHT - 1) / (x_max[!o] - x_min[!o]);
+	double scale = MIN(x_scale, y_scale);
 	for (unsigned n = CUTOFF; n < ITERATIONS; ++n) {
 		double x_last[2];
 		for (int i = 0; i < 2; ++i)
@@ -171,8 +176,8 @@ static int write_image(char *name)
 		for (int i = 0; i < 2; ++i)
 			v[i] = x[i] - x_last[i];
 
-		int i = (int)((HEIGHT - 1) * (x[0] - x_min[0]) / (x_max[0] - x_min[0]));
-		int j = (int)((WIDTH - 1) * (x[1] - x_min[1]) / (x_max[1] - x_min[1]));
+		int i = (int)((HEIGHT - range[!o] * scale) / 2 + (x[!o] - x_min[!o]) * scale);
+		int j = (int)((WIDTH  - range[ o] * scale) / 2 + (x[ o] - x_min[ o]) * scale);
 		/* printf("%f %f\t%d %d\n", x[0], x[1], i, j); */
 #if 0
 		assert(i >= 0 && i < HEIGHT);
