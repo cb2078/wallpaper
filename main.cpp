@@ -12,8 +12,8 @@
 #include "stb_image_write.h"
 
 const unsigned CUTOFF = 10000;
-const unsigned WIDTH = 3072;
-const unsigned HEIGHT = 2304;
+const int WIDTH = 3072;
+const int HEIGHT = 2304;
 const unsigned DENSITY = 50;
 const unsigned ITERATIONS = WIDTH * HEIGHT * DENSITY;
 const double INTENSITY = 16;
@@ -159,7 +159,7 @@ static int write_image(char *name)
 	memset(info, 0, sizeof(double) * HEIGHT * WIDTH * 2);
 
 	double x[2] = {0, 0};
-	for (int n = 0; n < CUTOFF; ++n)
+	for (unsigned n = 0; n < CUTOFF; ++n)
 		iteration(x);
 
 	double v[2] = {0, 0};
