@@ -50,6 +50,22 @@ static void iteration(double y[2])
 		y[i] = z[i];
 }
 
+static void random_c(void)
+{
+	for (int i = 0; i < 2; ++i)
+		for (int j = 0; j < 6; ++j)
+			c[j][i] = (double)rand() / RAND_MAX * 4 - 2;
+}
+
+static int set_c(char s[256])
+{
+	int result = 1;
+	for (int i = 0; i < 2; ++i)
+		for (int j = 0; j < 6; ++j)
+			result = result && sscanf(s + 7 * (i * 6 + j), "%lf", &c[j][i]);
+	return result;
+}
+
 // find a set of coefficients to generate a strange attractor
 static bool attractor(void)
 {
@@ -67,9 +83,6 @@ static bool attractor(void)
 	x_min[0] = x_min[1] = 1e10;
 	x_max[0] = x_max[1] = -1e10;
 	v_max[0] = v_max[1] = 0;
-	for (int i = 0; i < 2; ++i)
-		for (int j = 0; j < 6; ++j)
-			c[j][i] = (double)rand() / RAND_MAX * 4 - 2;
 
 	double lyapunov = 0;
 	for (unsigned n = 0; n < CUTOFF * 2; ++n) {
@@ -220,18 +233,32 @@ static int write_image(char *name)
 
 int main(void)
 {
+#if 1
+	int result = set_c(" 0.275 -0.072 -1.355  1.905 -1.437  1.268  1.145  1.450 -1.011 -1.781  1.364 -1.696");
+	if (!result) {
+		puts("Failed to load c");
+		return 1;
+	}
+	attractor();
+	write_image("c.png");
+#else
 	srand((unsigned)time(0));
 
-	for (int i = 0; i < SAMPLES; ++i) {
+	for (int n = 0; n < SAMPLES; ++n) {
 		// find a chaotic attractor
+		do
+			random_c();
 		while (attractor() == false);
 
 		// write to an image
-		char buf[20];
-		snprintf(buf, 20, "%d.png", i);
+		char buf[256];
+		for (int i = 0; i < 2; ++i)
+			for (int j = 0; j < 6; ++j)
+				sprintf(buf + 7 * (i * 6 + j), "% 1.3f ", c[j][i]);
+		sprintf(buf + 7 * 12 - 1, ".png\0");
 		write_image(buf);
 	}
-
+#endif
 	puts("done");
 	return 0;
 }

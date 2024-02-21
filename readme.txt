@@ -9,4 +9,3 @@ speedup (charlie)
 other stuff (becca)
 website
 load config to a file to save recompiling
-save attractor coefficients
