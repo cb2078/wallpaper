@@ -17,6 +17,7 @@ const int HEIGHT = 2304;
 const unsigned DENSITY = 50;
 const unsigned ITERATIONS = WIDTH * HEIGHT * DENSITY;
 const double INTENSITY = 16;
+const double BOARDER = 0.05;
 
 #define SAMPLES 32
 
@@ -167,7 +168,7 @@ static int write_image(char *name)
 	int o = range[0] < range[1];
 	double x_scale = (WIDTH - 1) / (x_max[o] - x_min[o]);
 	double y_scale = (HEIGHT - 1) / (x_max[!o] - x_min[!o]);
-	double scale = MIN(x_scale, y_scale);
+	double scale = MIN(x_scale, y_scale) * (1 - BOARDER);
 	for (unsigned n = CUTOFF; n < ITERATIONS; ++n) {
 		double x_last[2];
 		for (int i = 0; i < 2; ++i)
