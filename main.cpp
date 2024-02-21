@@ -14,9 +14,9 @@
 const unsigned CUTOFF = 10000;
 const int WIDTH = 3072;
 const int HEIGHT = 2304;
-const unsigned DENSITY = 50;
-const unsigned ITERATIONS = WIDTH * HEIGHT * DENSITY;
-const double INTENSITY = 16;
+const unsigned QUALITY = 50;
+const unsigned ITERATIONS = WIDTH * HEIGHT * QUALITY;
+const double INTENSITY = 50;
 const double BOARDER = 0.05;
 
 #define SAMPLES 32
@@ -179,6 +179,7 @@ static int write_image(char *name)
 	double x_scale = (WIDTH - 1) / (x_max[o] - x_min[o]);
 	double y_scale = (HEIGHT - 1) / (x_max[!o] - x_min[!o]);
 	double scale = MIN(x_scale, y_scale) * (1 - BOARDER);
+	unsigned count = 0;
 	for (unsigned n = CUTOFF; n < ITERATIONS; ++n) {
 		double x_last[2];
 		for (int i = 0; i < 2; ++i)
@@ -197,6 +198,7 @@ static int write_image(char *name)
 		if (i < 0 || i >= HEIGHT) continue;
 		if (j < 0 || j >= WIDTH) continue;
 #endif
+		count += info[i][j][0] == 0;
 		info[i][j][0] += 1;
 #ifdef HSV
 		info[i][j][1] += v[1] / v_max[1];
@@ -207,6 +209,7 @@ static int write_image(char *name)
 		info[i][j][3] += fabs(v[1]);
 #endif
 	}
+	double DENSITY = (double)ITERATIONS / count;
 
 	for (int i = 0; i < HEIGHT; ++i)
 		for (int j = 0; j < WIDTH; ++j) {
