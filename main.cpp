@@ -155,8 +155,8 @@ static int write_image(char *name)
 {
 	static char buf[HEIGHT][WIDTH][3];
 	memset(buf, 0, sizeof(char) * HEIGHT * WIDTH * 3);
-	static double info[HEIGHT][WIDTH][2];	// angle, count
-	memset(info, 0, sizeof(double) * HEIGHT * WIDTH * 2);
+	static double info[HEIGHT][WIDTH][4];
+	memset(info, 0, sizeof(double) * HEIGHT * WIDTH * 4);
 
 	double x[2] = {0, 0};
 	for (unsigned n = 0; n < CUTOFF; ++n)
@@ -181,18 +181,30 @@ static int write_image(char *name)
 		if (i < 0 || i >= HEIGHT) continue;
 		if (j < 0 || j >= WIDTH) continue;
 #endif
-		info[i][j][0] = atan2(v[1], v[0]);
-		info[i][j][1] += 1;
+		info[i][j][0] += 1;
+#ifdef HSV
+		info[i][j][1] += v[1] / v_max[1];
+		info[i][j][2] += v[0] / v_max[0];
+#else
+		info[i][j][1] += MAX(0, v[0] / v_max[0]);
+		info[i][j][2] += MAX(0, -v[0] / v_max[0]);
+		info[i][j][3] += fabs(v[1]);
+#endif
 	}
 
 	for (int i = 0; i < HEIGHT; ++i)
 		for (int j = 0; j < WIDTH; ++j) {
-			if (0 == info[i][j][1])
-				continue;
-			double H = 180 + (info[i][j][0] * 180 / M_PI);
+#ifdef HSV
+			double H = 180 + (atan2(info[i][j][1], info[i][j][2]) * 180 / M_PI);
 			double S = 1;
-			double V = MIN(1, INTENSITY / DENSITY * info[i][j][1] / 0xff);
+			double V = MIN(1, INTENSITY / DENSITY * info[i][j][0] / 0xff);
 			HSV_to_RGB(H, S, V, buf[i][j]);
+#else
+			for (int k = 0; k < 3; ++k)
+				buf[i][j][k] = (char)MIN(0xff, info[i][j][k + 1] * INTENSITY / DENSITY);
+#endif
+			for (int k = 0; k < 3; ++k)
+				buf[i][j][k] = srgb(buf[i][j][k]);
 		}
 
 	bool result = stbi_write_png(name, WIDTH, HEIGHT, 3, buf, WIDTH * sizeof(char) * 3);
