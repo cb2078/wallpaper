@@ -71,7 +71,8 @@ static bool attractor(void)
 		for (int j = 0; j < 6; ++j)
 			c[j][i] = (double)rand() / RAND_MAX * 4 - 2;
 
-	for (unsigned n = 0; n < ITERATIONS; ++n) {
+	double lyapunov = 0;
+	for (unsigned n = 0; n < CUTOFF * 2; ++n) {
 		double x_last[2];
 		for (int i = 0; i < 2; ++i)
 			x_last[i] = x[i];
@@ -83,13 +84,6 @@ static bool attractor(void)
 		for (int i = 0; i < 2; ++i)
 			if (fabs(x[i]) > 1e10 || fabs(x[i] < 1e-10))
 				return false;
-		// lyapunov exponent
-		if (n == CUTOFF) {
-			double d = dst(x, xe);
-			double lyapunov = log(fabs(d / d0));
-			if (lyapunov < 8)
-				return false;
-		}
 		if (n > CUTOFF)
 			for (int i = 0; i < 2; ++i) {
 				v[i] = x[i] - x_last[i];
@@ -97,8 +91,11 @@ static bool attractor(void)
 				x_min[i] = MIN(x_min[i], x[i]);
 				v_max[i] = MAX(v[i], v_max[i]);
 			}
+			// lyapunov exponent
+			double d = dst(x, xe);
+			lyapunov += log(fabs(d / d0));
 	}
-	return true;
+	return lyapunov / CUTOFF > 10;
 }
 
 static char srgb(unsigned char a)
