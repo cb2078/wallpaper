@@ -235,11 +235,13 @@ static int write_image(char *name)
 			}
 		}
 
-	bool result = stbi_write_png(name, WIDTH, HEIGHT, 3, buf, WIDTH * sizeof(char) * 3);
+	char path[256];
+	snprintf(path, 256, "images/%s.png", name);
+	bool result = stbi_write_png(path, WIDTH, HEIGHT, 3, buf, WIDTH * sizeof(char) * 3);
 	if (!result)
-		printf("Failed to write %s\n", name);
+		printf("Failed to write %s\n", path);
 	else
-		printf("%s\n", name);
+		printf("%s\n", path);
 	return result;
 }
 
@@ -259,8 +261,8 @@ int main(void)
 			for (int i = 0; i < 2; ++i)
 				for (int j = 0; j < 6; ++j)
 					sprintf(buf + 7 * (i * 6 + j), "% 1.3f ", c[j][i]);
-			sprintf(buf + 7 * 12 - 1, ".png\0");
-			printf("%2d/%2d ", 1 + n, SAMPLES);
+			sprintf(buf + 7 * 12 - 1, "\0");
+			printf("%2d/%d ", 1 + n, SAMPLES);
 			write_image(buf);
 		}
 	else
@@ -273,6 +275,7 @@ int main(void)
 			attractor();
 			char buf[256];
 			snprintf(buf, 256, "%c.png", 'a' + char(n));
+			printf("%2d/%d ", 1 + n, (int)LENGTH(PARAMS));
 			write_image(buf);
 		}
 	puts("done");
