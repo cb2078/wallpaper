@@ -8,4 +8,4 @@ hot code reloading (charlie)
 speedup (charlie)
 other stuff (becca)
 website
-load config to a file to save recompiling
+mandlebrot set style graph

@@ -11,15 +11,21 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
+enum colour_type {
+	BW,
+	HSV,
+	RGB,
+};
+
 const unsigned CUTOFF = 10000;
-const int WIDTH = 3072;
-const int HEIGHT = 2304;
-const unsigned QUALITY = 50;
+const int WIDTH = 4000;
+const int HEIGHT = 3000;
+const unsigned QUALITY = 100;
 const unsigned ITERATIONS = WIDTH * HEIGHT * QUALITY;
 const double INTENSITY = 50;
 const double BOARDER = 0.05;
-
-#define SAMPLES 32
+const unsigned SAMPLES = 50;
+const enum colour_type COLOUR = BW;
 
 #define MAX(x, y)	((x) > (y) ? (x) : (y))
 #define MIN(x, y)	((x) < (y) ? (x) : (y))
@@ -190,40 +196,39 @@ static int write_image(char *name)
 
 		int i = (int)((HEIGHT - range[!o] * scale) / 2 + (x[!o] - x_min[!o]) * scale);
 		int j = (int)((WIDTH  - range[ o] * scale) / 2 + (x[ o] - x_min[ o]) * scale);
-		/* printf("%f %f\t%d %d\n", x[0], x[1], i, j); */
-#if 0
-		assert(i >= 0 && i < HEIGHT);
-		assert(j >= 0 && j < WIDTH);
-#else
 		if (i < 0 || i >= HEIGHT) continue;
 		if (j < 0 || j >= WIDTH) continue;
-#endif
+
 		count += info[i][j][0] == 0;
 		info[i][j][0] += 1;
-#ifdef HSV
-		info[i][j][1] += v[1] / v_max[1];
-		info[i][j][2] += v[0] / v_max[0];
-#else
-		info[i][j][1] += MAX(0, v[0] / v_max[0]);
-		info[i][j][2] += MAX(0, -v[0] / v_max[0]);
-		info[i][j][3] += fabs(v[1]);
-#endif
+		if (COLOUR == HSV) {
+			info[i][j][1] += v[1] / v_max[1];
+			info[i][j][2] += v[0] / v_max[0];
+		} else {
+			info[i][j][1] += MAX(0, v[0] / v_max[0]);
+			info[i][j][2] += MAX(0, -v[0] / v_max[0]);
+			info[i][j][3] += fabs(v[1]);
+		}
 	}
 	double DENSITY = (double)ITERATIONS / count;
 
 	for (int i = 0; i < HEIGHT; ++i)
 		for (int j = 0; j < WIDTH; ++j) {
-#ifdef HSV
-			double H = 180 + (atan2(info[i][j][1], info[i][j][2]) * 180 / M_PI);
-			double S = 1;
-			double V = MIN(1, INTENSITY / DENSITY * info[i][j][0] / 0xff);
-			HSV_to_RGB(H, S, V, buf[i][j]);
-#else
-			for (int k = 0; k < 3; ++k)
-				buf[i][j][k] = (char)MIN(0xff, info[i][j][k + 1] * INTENSITY / DENSITY);
-#endif
-			for (int k = 0; k < 3; ++k)
+			if (COLOUR == HSV) {
+				double H = 180 + (atan2(info[i][j][1], info[i][j][2]) * 180 / M_PI);
+				double S = 1;
+				double V = MIN(1, INTENSITY / DENSITY * info[i][j][0] / 0xff);
+				HSV_to_RGB(H, S, V, buf[i][j]);
+			} else {
+				if (info[i][j][0])
+					for (int k = 0; k < 3; ++k)
+						buf[i][j][k] = (char)MIN(0xff, info[i][j][0] * INTENSITY / DENSITY);
+			}
+			for (int k = 0; k < 3; ++k) {
 				buf[i][j][k] = srgb(buf[i][j][k]);
+				if (COLOUR == BW)
+					buf[i][j][k] = 0xff - buf[i][j][k];
+			}
 		}
 
 	bool result = stbi_write_png(name, WIDTH, HEIGHT, 3, buf, WIDTH * sizeof(char) * 3);
@@ -259,6 +264,7 @@ int main(void)
 			for (int j = 0; j < 6; ++j)
 				sprintf(buf + 7 * (i * 6 + j), "% 1.3f ", c[j][i]);
 		sprintf(buf + 7 * 12 - 1, ".png\0");
+		printf("%2d/%2d ", 1 + n, SAMPLES);
 		write_image(buf);
 	}
 #endif
