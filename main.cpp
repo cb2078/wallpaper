@@ -26,9 +26,13 @@ const double INTENSITY = 50;
 const double BOARDER = 0.05;
 const unsigned SAMPLES = 50;
 const enum colour_type COLOUR = BW;
+const char *PARAMS[] = {
+	" 0.275 -0.072 -1.355  1.905 -1.437  1.268  1.145  1.450 -1.011 -1.781  1.364 -1.696",
+};
 
 #define MAX(x, y)	((x) > (y) ? (x) : (y))
 #define MIN(x, y)	((x) < (y) ? (x) : (y))
+#define LENGTH(a)	(sizeof(a) / sizeof(a[0]))
 
 static double c[6][2];
 static double x_min[2];
@@ -63,7 +67,7 @@ static void random_c(void)
 			c[j][i] = (double)rand() / RAND_MAX * 4 - 2;
 }
 
-static int set_c(char s[256])
+static int set_c(const char s[256])
 {
 	int result = 1;
 	for (int i = 0; i < 2; ++i)
@@ -222,7 +226,7 @@ static int write_image(char *name)
 			} else {
 				if (info[i][j][0])
 					for (int k = 0; k < 3; ++k)
-						buf[i][j][k] = (char)MIN(0xff, info[i][j][0] * INTENSITY / DENSITY);
+						buf[i][j][k] = (char)MIN(0xff, info[i][j][COLOUR == BW ? 0 : k + 1] * INTENSITY / DENSITY);
 			}
 			for (int k = 0; k < 3; ++k) {
 				buf[i][j][k] = srgb(buf[i][j][k]);
@@ -241,33 +245,36 @@ static int write_image(char *name)
 
 int main(void)
 {
-#if 1
-	int result = set_c(" 0.275 -0.072 -1.355  1.905 -1.437  1.268  1.145  1.450 -1.011 -1.781  1.364 -1.696");
-	if (!result) {
-		puts("Failed to load c");
-		return 1;
-	}
-	attractor();
-	write_image("c.png");
-#else
 	srand((unsigned)time(0));
 
-	for (int n = 0; n < SAMPLES; ++n) {
-		// find a chaotic attractor
-		do
-			random_c();
-		while (attractor() == false);
+	if (LENGTH(PARAMS) == 0)
+		for (int n = 0; n < SAMPLES; ++n) {
+			// find a chaotic attractor
+			do
+				random_c();
+			while (attractor() == false);
 
-		// write to an image
-		char buf[256];
-		for (int i = 0; i < 2; ++i)
-			for (int j = 0; j < 6; ++j)
-				sprintf(buf + 7 * (i * 6 + j), "% 1.3f ", c[j][i]);
-		sprintf(buf + 7 * 12 - 1, ".png\0");
-		printf("%2d/%2d ", 1 + n, SAMPLES);
-		write_image(buf);
-	}
-#endif
+			// write to an image
+			char buf[256];
+			for (int i = 0; i < 2; ++i)
+				for (int j = 0; j < 6; ++j)
+					sprintf(buf + 7 * (i * 6 + j), "% 1.3f ", c[j][i]);
+			sprintf(buf + 7 * 12 - 1, ".png\0");
+			printf("%2d/%2d ", 1 + n, SAMPLES);
+			write_image(buf);
+		}
+	else
+		for (int n = 0; n < LENGTH(PARAMS); ++n) {
+			int result = set_c(PARAMS[n]);
+			if (!result) {
+				puts("Failed to load c");
+				continue;
+			}
+			attractor();
+			char buf[256];
+			snprintf(buf, 256, "%c.png", 'a' + char(n));
+			write_image(buf);
+		}
 	puts("done");
 	return 0;
 }
