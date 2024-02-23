@@ -28,6 +28,7 @@ const unsigned SAMPLES = 50;
 const enum colour_type COLOUR = BW;
 const char *PARAMS[] = {
 	" 0.275 -0.072 -1.355  1.905 -1.437  1.268  1.145  1.450 -1.011 -1.781  1.364 -1.696",
+	" 0.434  1.831 -0.900 -1.835  0.580 -0.190  0.788  1.578 -1.139  1.579 -0.846 -1.067",
 };
 
 #define MAX(x, y)	((x) > (y) ? (x) : (y))
@@ -274,7 +275,7 @@ int main(void)
 			}
 			attractor();
 			char buf[256];
-			snprintf(buf, 256, "%c.png", 'a' + char(n));
+			snprintf(buf, 256, "%c", 'a' + char(n));
 			printf("%2d/%d ", 1 + n, (int)LENGTH(PARAMS));
 			write_image(buf);
 		}
