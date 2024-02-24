@@ -7,5 +7,6 @@
 *.png
 *.rdbg
 main
+run.bat
 shell.bat
 images/
