@@ -25,10 +25,13 @@ const unsigned ITERATIONS = WIDTH * HEIGHT * QUALITY;
 const double INTENSITY = 50;
 const double BOARDER = 0.05;
 const unsigned SAMPLES = 50;
-const enum colour_type COLOUR = BW;
+const enum colour_type COLOUR = RGB;
 const char *PARAMS[] = {
 	" 0.275 -0.072 -1.355  1.905 -1.437  1.268  1.145  1.450 -1.011 -1.781  1.364 -1.696",
 	" 0.434  1.831 -0.900 -1.835  0.580 -0.190  0.788  1.578 -1.139  1.579 -0.846 -1.067",
+	" 0.770 -0.988  0.482  0.740  0.200  0.414  0.081  1.878 -1.079  0.013 -0.486  0.369",
+	" 0.728  1.898 -1.476 -0.422 -0.405  0.088  0.749 -0.969  1.334 -0.853  1.028 -1.044",
+	" 0.900 -1.751  1.179 -0.456  0.735  1.060  0.126  1.608 -1.290 -0.014  0.733 -0.210",
 };
 
 #define MAX(x, y)	((x) > (y) ? (x) : (y))
@@ -248,6 +251,28 @@ static int write_image(char *name)
 
 int main(void)
 {
+#if 1
+	set_c(PARAMS[4]);
+	double start = -10e-2;
+	double end = 4e-2;
+	double range = end - start;
+	int frames = 1300;
+	int N = frames / (1 * 1);
+	double dt = range / N;
+
+	int i = 0, j = 3;
+	c[j][i] += start;
+
+	int frame = 0;
+	for (int n = 0; n < N; ++n) {
+		attractor();
+		char buf[256];
+		snprintf(buf, 256, "%d", frame++);
+		printf("%3d%%\t", frame * 100 / frames);
+		write_image(buf);
+		c[j][i] += dt;
+	}
+#else
 	srand((unsigned)time(0));
 
 	if (LENGTH(PARAMS) == 0)
@@ -281,4 +306,5 @@ int main(void)
 		}
 	puts("done");
 	return 0;
+#endif
 }
