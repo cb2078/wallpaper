@@ -71,13 +71,20 @@ static void random_c(void)
 			c[j][i] = (double)rand() / RAND_MAX * 4 - 2;
 }
 
-static int set_c(const char s[256])
+static int set_c(const char buf[256])
 {
 	int result = 1;
 	for (int i = 0; i < 2; ++i)
 		for (int j = 0; j < 6; ++j)
-			result = result && sscanf(s + 7 * (i * 6 + j), "%lf", &c[j][i]);
+			result = result && sscanf(buf + 7 * (i * 6 + j), "%lf", &c[j][i]);
 	return result;
+}
+
+static void str_c(char buf[256])
+{
+	for (int i = 0; i < 2; ++i)
+		for (int j = 0; j < 6; ++j)
+			sprintf(buf + 7 * (i * 6 + j), "% 1.3f ", c[j][i]);
 }
 
 // find a set of coefficients to generate a strange attractor
@@ -239,20 +246,17 @@ static int write_image(char *name)
 			}
 		}
 
-	char path[256];
-	snprintf(path, 256, "images/%s.png", name);
-	bool result = stbi_write_png(path, WIDTH, HEIGHT, 3, buf, WIDTH * sizeof(char) * 3);
+	bool result = stbi_write_png(name, WIDTH, HEIGHT, 3, buf, WIDTH * sizeof(char) * 3);
 	if (!result)
-		printf("Failed to write %s\n", path);
+		printf("Failed to write %s\n", name);
 	else
-		printf("%s\n", path);
+		printf("%s\n", name);
 	return result;
 }
 
-int main(void)
+static void write_video(const char params)
 {
-#if 1
-	set_c(PARAMS[4]);
+	set_c(params);
 	double start = -10e-2;
 	double end = 4e-2;
 	double range = end - start;
@@ -266,16 +270,19 @@ int main(void)
 	int frame = 0;
 	for (int n = 0; n < N; ++n) {
 		attractor();
-		char buf[256];
-		snprintf(buf, 256, "%d", frame++);
+		char name[256];
+		snprintf(name, 256, "video/%d.png", frame++);
 		printf("%3d%%\t", frame * 100 / frames);
-		write_image(buf);
+		write_image(name);
 		c[j][i] += dt;
 	}
-#else
+}
+
+int main(void)
+{
 	srand((unsigned)time(0));
 
-	if (LENGTH(PARAMS) == 0)
+	if (true)
 		for (int n = 0; n < SAMPLES; ++n) {
 			// find a chaotic attractor
 			do
@@ -283,13 +290,12 @@ int main(void)
 			while (attractor() == false);
 
 			// write to an image
-			char buf[256];
-			for (int i = 0; i < 2; ++i)
-				for (int j = 0; j < 6; ++j)
-					sprintf(buf + 7 * (i * 6 + j), "% 1.3f ", c[j][i]);
-			sprintf(buf + 7 * 12 - 1, "\0");
+			char params[256];
+			str_c(params);
+			char name[256];
+			snprintf(name, 256, "images/%s.png", params);
 			printf("%2d/%d ", 1 + n, SAMPLES);
-			write_image(buf);
+			write_image(name);
 		}
 	else
 		for (int n = 0; n < LENGTH(PARAMS); ++n) {
@@ -299,12 +305,11 @@ int main(void)
 				continue;
 			}
 			attractor();
-			char buf[256];
-			snprintf(buf, 256, "%c", 'a' + char(n));
+			char name[256];
+			snprintf(name, 256, "images/%c.png", 'a' + char(n));
 			printf("%2d/%d ", 1 + n, (int)LENGTH(PARAMS));
-			write_image(buf);
+			write_image(name);
 		}
 	puts("done");
 	return 0;
-#endif
 }
