@@ -18,14 +18,14 @@ enum colour_type {
 };
 
 const unsigned CUTOFF = 10000;
-const int WIDTH = 4000;
-const int HEIGHT = 3000;
-const unsigned QUALITY = 100;
+const int WIDTH = 800;
+const int HEIGHT = 600;
+const unsigned QUALITY = 25;
 const unsigned ITERATIONS = WIDTH * HEIGHT * QUALITY;
 const double INTENSITY = 50;
 const double BOARDER = 0.05;
 const unsigned SAMPLES = 50;
-const enum colour_type COLOUR = RGB;
+const enum colour_type COLOUR = BW;
 const char *PARAMS[] = {
 	" 0.275 -0.072 -1.355  1.905 -1.437  1.268  1.145  1.450 -1.011 -1.781  1.364 -1.696",
 	" 0.434  1.831 -0.900 -1.835  0.580 -0.190  0.788  1.578 -1.139  1.579 -0.846 -1.067",
@@ -183,9 +183,8 @@ static void HSV_to_RGB(double H, double S, double V, char RGB[3])
 		RGB[k] = (char)((RGB1[k] + m) * 0xff);
 }
 
-static int write_image(char *name)
+static void render_image(char buf[HEIGHT][WIDTH][3])
 {
-	static char buf[HEIGHT][WIDTH][3];
 	memset(buf, 0, sizeof(char) * HEIGHT * WIDTH * 3);
 	static double info[HEIGHT][WIDTH][4];
 	memset(info, 0, sizeof(double) * HEIGHT * WIDTH * 4);
@@ -245,8 +244,11 @@ static int write_image(char *name)
 					buf[i][j][k] = 0xff - buf[i][j][k];
 			}
 		}
+}
 
-	bool result = stbi_write_png(name, WIDTH, HEIGHT, 3, buf, WIDTH * sizeof(char) * 3);
+static int write_image(char *name, int width, int height, void *buf)
+{
+	int result = stbi_write_png(name, width, height, 3, buf, width * sizeof(char) * 3);
 	if (!result)
 		printf("Failed to write %s\n", name);
 	else
@@ -254,7 +256,14 @@ static int write_image(char *name)
 	return result;
 }
 
-static void write_video(const char params)
+static void write_attractor(char *name)
+{
+	static char buf[HEIGHT][WIDTH][3];
+	render_image(buf);
+	write_image(name, WIDTH, HEIGHT, buf);
+}
+
+static void write_video(const char *params)
 {
 	set_c(params);
 	double start = -10e-2;
@@ -269,17 +278,53 @@ static void write_video(const char params)
 
 	int frame = 0;
 	for (int n = 0; n < N; ++n) {
-		attractor();
+		attractor();	// TODO I shouldn't be doing this
 		char name[256];
 		snprintf(name, 256, "video/%d.png", frame++);
 		printf("%3d%%\t", frame * 100 / frames);
-		write_image(name);
+		write_attractor(name);
 		c[j][i] += dt;
 	}
 }
 
+static void video_preview(const char *params, double *cn, double start, double end, int slides)
+{
+	int n = (int)ceil(sqrt((double)slides)); // width of the square showing each of the slides
+	int w = WIDTH * n;
+	int h = HEIGHT * n;
+	char *buf = (char *)malloc(sizeof(char) * w * h * 3);
+#define BUF_AT(i, j, k)	buf[(i) * w * 3 + (j) * 3 + (k)]
+	memset(buf, 0x7f, sizeof(char) * w * h * 3);
+
+	set_c(params);
+	double range = end - start;
+	double dt = range / (double)slides;
+	*cn += start;
+
+	for (int s = 0; s < slides; ++s) {
+		printf("%2d/%d\n", 1 + s, slides);
+		int i = s / n;
+		int j = s % n;
+		static char tmp[HEIGHT][WIDTH][3];
+		attractor();
+		render_image(tmp);
+		for (int k = 0; k < HEIGHT; ++k)
+			memcpy(&BUF_AT(i * HEIGHT + k, j * WIDTH, 0), &tmp[k][0][0], sizeof(char) * WIDTH * 3);
+		*cn += dt;
+	}
+
+	write_image("images/preview.png", w, h, buf);
+}
+
 int main(void)
 {
+#if 1
+	video_preview(PARAMS[0], &c[3][0], -10e-2, 9e-2, 32);
+
+	set_c(PARAMS[0]);
+	attractor();
+	write_attractor("images/test.png");
+#else
 	srand((unsigned)time(0));
 
 	if (true)
@@ -295,7 +340,7 @@ int main(void)
 			char name[256];
 			snprintf(name, 256, "images/%s.png", params);
 			printf("%2d/%d ", 1 + n, SAMPLES);
-			write_image(name);
+			write_attractor(name);
 		}
 	else
 		for (int n = 0; n < LENGTH(PARAMS); ++n) {
@@ -308,8 +353,9 @@ int main(void)
 			char name[256];
 			snprintf(name, 256, "images/%c.png", 'a' + char(n));
 			printf("%2d/%d ", 1 + n, (int)LENGTH(PARAMS));
-			write_image(name);
+			write_attractor(name);
 		}
+#endif
 	puts("done");
 	return 0;
 }
