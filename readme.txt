@@ -1,10 +1,7 @@
-gui (imgui + glfw + opengl)
-	sliders
-	buttons
-	colour palettes
-3D (opengl)
+3D colouring
 hot code reloading (charlie)
 speedup (charlie)
 other stuff (becca)
 website
 mandlebrot set style graph
+ffmpeg library video encoding
