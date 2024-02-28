@@ -306,27 +306,20 @@ static void sample_attractor(int samples)
 	write_samples("samples", samples_array, samples);
 }
 
-static void write_video(const char *params)
+static void write_video(const char *params, double *cn, double start, double end, int frames)
 {
 	set_c(params);
-	double start = -10e-2;
-	double end = 4e-2;
 	double range = end - start;
-	int frames = 1300;
-	int N = frames / (1 * 1);
-	double dt = range / N;
+	double dt = range / frames;
+	*cn += start;
 
-	int i = 0, j = 3;
-	c[j][i] += start;
-
-	int frame = 0;
-	for (int n = 0; n < N; ++n) {
+	for (int frame = 0; frame < frames; ++frame) {
 		attractor();	// TODO I shouldn't be doing this
 		char name[256];
-		snprintf(name, 256, "video/%d.png", frame++);
+		snprintf(name, 256, "video/%d.png", frame);
 		printf("%3d%%\t", frame * 100 / frames);
 		write_attractor(name);
-		c[j][i] += dt;
+		*cn += dt;
 	}
 }
 
