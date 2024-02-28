@@ -263,6 +263,39 @@ static void write_attractor(char *name)
 	write_image(name, WIDTH, HEIGHT, buf);
 }
 
+static void sample_attractor(int samples)
+{
+	int n = (int)ceil(sqrt((double)samples));
+	int w = WIDTH * n;
+	int h = HEIGHT * n;
+	char *buf = (char *)malloc(sizeof(char) * w * h * 3);
+#define BUF_AT2(i, j, k)	buf[(i) * w * 3 + (j) * 3 + (k)]
+	memset(buf, 0x7f, sizeof(char) * w * h * 3);
+
+	FILE *f = fopen("images/samples.txt", "w");
+
+	for (int s = 0; s < samples; ++s) {
+		printf("%2d/%d\n", 1 + s, samples);
+		int i = s / n;
+		int j = s % n;
+		static char tmp[HEIGHT][WIDTH][3];
+
+		do {
+			random_c();
+		} while (attractor() == false);
+		char params[256];
+		str_c(params);
+		fprintf(f, "%3d\t%s\n", s + 1, params);
+
+		render_image(tmp);
+		for (int k = 0; k < HEIGHT; ++k)
+			memcpy(&BUF_AT2(i * HEIGHT + k, j * WIDTH, 0), &tmp[k][0][0], sizeof(char) * WIDTH * 3);
+	}
+
+	write_image("images/samples.png", w, h, buf);
+	fclose(f);
+}
+
 static void write_video(const char *params)
 {
 	set_c(params);
@@ -343,7 +376,9 @@ static void video_params(double **cn, double *start, double *end)
 int main(void)
 {
 	srand((unsigned)time(0));
-
+#if 1
+	sample_attractor(50);
+#else
 #if 1
 	do {
 		random_c();
@@ -388,6 +423,7 @@ int main(void)
 			printf("%2d/%d ", 1 + n, (int)LENGTH(PARAMS));
 			write_attractor(name);
 		}
+#endif
 #endif
 	puts("done");
 	return 0;
