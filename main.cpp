@@ -26,13 +26,6 @@ const double INTENSITY = 50;
 const double BOARDER = 0.05;
 const unsigned SAMPLES = 50;
 const enum colour_type COLOUR = BW;
-const char *PARAMS[] = {
-	" 0.275 -0.072 -1.355  1.905 -1.437  1.268  1.145  1.450 -1.011 -1.781  1.364 -1.696",
-	" 0.434  1.831 -0.900 -1.835  0.580 -0.190  0.788  1.578 -1.139  1.579 -0.846 -1.067",
-	" 0.770 -0.988  0.482  0.740  0.200  0.414  0.081  1.878 -1.079  0.013 -0.486  0.369",
-	" 0.728  1.898 -1.476 -0.422 -0.405  0.088  0.749 -0.969  1.334 -0.853  1.028 -1.044",
-	" 0.900 -1.751  1.179 -0.456  0.735  1.060  0.126  1.608 -1.290 -0.014  0.733 -0.210",
-};
 
 #define MAX(x, y)	((x) > (y) ? (x) : (y))
 #define MIN(x, y)	((x) < (y) ? (x) : (y))
@@ -256,6 +249,42 @@ static int write_image(char *name, int width, int height, void *buf)
 	return result;
 }
 
+static int write_samples(char name[], char (*params_array)[256], int samples)
+{
+	int n = (int)ceil(sqrt((double)samples));
+	int w = WIDTH * n;
+	int h = HEIGHT * n;
+	char *buf = (char *)malloc(sizeof(char) * w * h * 3);
+#define BUF_AT(i, j, k) buf[(i) * w * 3 + (j) * 3 + (k)]
+	memset(buf, 0x7f, sizeof(char) * w * h * 3);
+
+	char txt[256];
+	snprintf(txt, 256, "images/%s.txt", name);
+	FILE *f = fopen(txt, "w");
+
+	for (int s = 0; s < samples; ++s) {
+		printf("%3d/%d\n", 1 + s, samples);
+		int i = s / n;
+		int j = s % n;
+		static char tmp[HEIGHT][WIDTH][3];
+
+		set_c(params_array[s]);
+		fprintf(f, "%3d\t%s\n", s + 1, params_array[s]);
+
+		attractor();
+		render_image(tmp);
+		for (int k = 0; k < HEIGHT; ++k)
+			memcpy(&BUF_AT(i * HEIGHT + k, j * WIDTH, 0), &tmp[k][0][0], sizeof(char) * WIDTH * 3);
+	}
+	fclose(f);
+
+	char png[256];
+	snprintf(png, 256, "images/%s.png", name);
+	int result = write_image(png, w, h, buf);
+	free(buf);
+	return result;
+}
+
 static void write_attractor(char *name)
 {
 	static char buf[HEIGHT][WIDTH][3];
@@ -265,35 +294,16 @@ static void write_attractor(char *name)
 
 static void sample_attractor(int samples)
 {
-	int n = (int)ceil(sqrt((double)samples));
-	int w = WIDTH * n;
-	int h = HEIGHT * n;
-	char *buf = (char *)malloc(sizeof(char) * w * h * 3);
-#define BUF_AT2(i, j, k)	buf[(i) * w * 3 + (j) * 3 + (k)]
-	memset(buf, 0x7f, sizeof(char) * w * h * 3);
-
-	FILE *f = fopen("images/samples.txt", "w");
+	char (*samples_array)[256] = (char (*)[256])malloc(sizeof(char) * samples * 256);
 
 	for (int s = 0; s < samples; ++s) {
-		printf("%2d/%d\n", 1 + s, samples);
-		int i = s / n;
-		int j = s % n;
-		static char tmp[HEIGHT][WIDTH][3];
-
 		do {
 			random_c();
 		} while (attractor() == false);
-		char params[256];
-		str_c(params);
-		fprintf(f, "%3d\t%s\n", s + 1, params);
-
-		render_image(tmp);
-		for (int k = 0; k < HEIGHT; ++k)
-			memcpy(&BUF_AT2(i * HEIGHT + k, j * WIDTH, 0), &tmp[k][0][0], sizeof(char) * WIDTH * 3);
+		str_c(samples_array[s]);
 	}
 
-	write_image("images/samples.png", w, h, buf);
-	fclose(f);
+	write_samples("samples", samples_array, samples);
 }
 
 static void write_video(const char *params)
@@ -320,33 +330,20 @@ static void write_video(const char *params)
 	}
 }
 
-static void video_preview(const char *params, double *cn, double start, double end, int slides)
+static void video_preview(const char *params, double *cn, double start, double end, int samples)
 {
-	int n = (int)ceil(sqrt((double)slides)); // width of the square showing each of the slides
-	int w = WIDTH * n;
-	int h = HEIGHT * n;
-	char *buf = (char *)malloc(sizeof(char) * w * h * 3);
-#define BUF_AT(i, j, k)	buf[(i) * w * 3 + (j) * 3 + (k)]
-	memset(buf, 0x7f, sizeof(char) * w * h * 3);
-
+	char (*samples_array)[256] = (char (*)[256])malloc(sizeof(char) * samples * 256);
 	set_c(params);
 	double range = end - start;
-	double dt = range / (double)slides;
+	double dt = range / (double)samples;
 	*cn += start;
 
-	for (int s = 0; s < slides; ++s) {
-		printf("%2d/%d\n", 1 + s, slides);
-		int i = s / n;
-		int j = s % n;
-		static char tmp[HEIGHT][WIDTH][3];
-		attractor();
-		render_image(tmp);
-		for (int k = 0; k < HEIGHT; ++k)
-			memcpy(&BUF_AT(i * HEIGHT + k, j * WIDTH, 0), &tmp[k][0][0], sizeof(char) * WIDTH * 3);
+	for (int s = 0; s < samples; ++s) {
+		str_c(samples_array[s]);
 		*cn += dt;
 	}
 
-	write_image("images/preview.png", w, h, buf);
+	write_samples("preview", samples_array, samples);
 }
 
 static void video_params(double **cn, double *start, double *end)
@@ -376,55 +373,17 @@ static void video_params(double **cn, double *start, double *end)
 int main(void)
 {
 	srand((unsigned)time(0));
-#if 1
-	sample_attractor(50);
-#else
-#if 1
+
 	do {
 		random_c();
-	} while (!attractor());
-	char params[256];
-	str_c(params);
+	} while (attractor() == false);
 
-	set_c(params);
 	double *cn, start, end;
 	video_params(&cn, &start, &end);
-	video_preview(params, cn, start, end, 32);
+	char params[256];
+	str_c(params);
+	video_preview(params, cn, start, end, 25);
 
-	set_c(params);
-	attractor();
-	write_attractor("images/test.png");
-#else
-	if (true)
-		for (int n = 0; n < SAMPLES; ++n) {
-			// find a chaotic attractor
-			do
-				random_c();
-			while (attractor() == false);
-
-			// write to an image
-			char params[256];
-			str_c(params);
-			char name[256];
-			snprintf(name, 256, "images/%s.png", params);
-			printf("%2d/%d ", 1 + n, SAMPLES);
-			write_attractor(name);
-		}
-	else
-		for (int n = 0; n < LENGTH(PARAMS); ++n) {
-			int result = set_c(PARAMS[n]);
-			if (!result) {
-				puts("Failed to load c");
-				continue;
-			}
-			attractor();
-			char name[256];
-			snprintf(name, 256, "images/%c.png", 'a' + char(n));
-			printf("%2d/%d ", 1 + n, (int)LENGTH(PARAMS));
-			write_attractor(name);
-		}
-#endif
-#endif
 	puts("done");
 	return 0;
 }
