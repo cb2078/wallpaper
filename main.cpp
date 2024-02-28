@@ -57,29 +57,6 @@ static void iteration(double y[2])
 		y[i] = z[i];
 }
 
-static void random_c(void)
-{
-	for (int i = 0; i < 2; ++i)
-		for (int j = 0; j < 6; ++j)
-			c[j][i] = (double)rand() / RAND_MAX * 4 - 2;
-}
-
-static int set_c(const char buf[256])
-{
-	int result = 1;
-	for (int i = 0; i < 2; ++i)
-		for (int j = 0; j < 6; ++j)
-			result = result && sscanf(buf + 7 * (i * 6 + j), "%lf", &c[j][i]);
-	return result;
-}
-
-static void str_c(char buf[256])
-{
-	for (int i = 0; i < 2; ++i)
-		for (int j = 0; j < 6; ++j)
-			sprintf(buf + 7 * (i * 6 + j), "% 1.3f ", c[j][i]);
-}
-
 // find a set of coefficients to generate a strange attractor
 static bool attractor(void)
 {
@@ -123,6 +100,31 @@ static bool attractor(void)
 			lyapunov += log(fabs(d / d0));
 	}
 	return lyapunov / CUTOFF > 10;
+}
+
+static void random_c(void)
+{
+	do {
+		for (int i = 0; i < 2; ++i)
+			for (int j = 0; j < 6; ++j)
+				c[j][i] = (double)rand() / RAND_MAX * 4 - 2;
+	} while (attractor() == false);
+}
+
+static int set_c(const char buf[256])
+{
+	int result = 1;
+	for (int i = 0; i < 2; ++i)
+		for (int j = 0; j < 6; ++j)
+			result = result && sscanf(buf + 7 * (i * 6 + j), "%lf", &c[j][i]);
+	return result;
+}
+
+static void str_c(char buf[256])
+{
+	for (int i = 0; i < 2; ++i)
+		for (int j = 0; j < 6; ++j)
+			sprintf(buf + 7 * (i * 6 + j), "% 1.3f ", c[j][i]);
 }
 
 static char srgb(unsigned char a)
@@ -297,9 +299,7 @@ static void sample_attractor(int samples)
 	char (*samples_array)[256] = (char (*)[256])malloc(sizeof(char) * samples * 256);
 
 	for (int s = 0; s < samples; ++s) {
-		do {
-			random_c();
-		} while (attractor() == false);
+		random_c();
 		str_c(samples_array[s]);
 	}
 
@@ -374,10 +374,9 @@ int main(void)
 {
 	srand((unsigned)time(0));
 
-	do {
-		random_c();
-	} while (attractor() == false);
+	sample_attractor(25);
 
+	random_c();
 	double *cn, start, end;
 	video_params(&cn, &start, &end);
 	char params[256];
