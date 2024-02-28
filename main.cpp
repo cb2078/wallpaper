@@ -316,17 +316,50 @@ static void video_preview(const char *params, double *cn, double start, double e
 	write_image("images/preview.png", w, h, buf);
 }
 
+static void video_params(double **cn, double *start, double *end)
+{
+	int i = 2 * rand() / RAND_MAX;
+	int j = 6 * rand() / RAND_MAX;
+	*cn = &c[j][i];
+	static double step = 1e-2;
+
+	double tmp = c[j][i];
+	double dt = 0;
+	do {
+		dt += step;
+		c[j][i] = tmp - dt;
+	} while (attractor());
+	*start = -dt;
+
+	c[j][i] = tmp;
+	dt = 0;
+	do {
+		dt += step;
+		c[j][i] = tmp + dt;
+	} while (attractor());
+	*end = dt;
+}
+
 int main(void)
 {
-#if 1
-	video_preview(PARAMS[0], &c[3][0], -10e-2, 9e-2, 32);
+	srand((unsigned)time(0));
 
-	set_c(PARAMS[0]);
+#if 1
+	do {
+		random_c();
+	} while (!attractor());
+	char params[256];
+	str_c(params);
+
+	set_c(params);
+	double *cn, start, end;
+	video_params(&cn, &start, &end);
+	video_preview(params, cn, start, end, 32);
+
+	set_c(params);
 	attractor();
 	write_attractor("images/test.png");
 #else
-	srand((unsigned)time(0));
-
 	if (true)
 		for (int n = 0; n < SAMPLES; ++n) {
 			// find a chaotic attractor
