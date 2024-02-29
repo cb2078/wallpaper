@@ -1,7 +1,6 @@
 3D colouring
-hot code reloading (charlie)
-speedup (charlie)
-other stuff (becca)
+threads
 website
 mandlebrot set style graph
 ffmpeg library video encoding
+command line options
