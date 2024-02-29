@@ -86,7 +86,7 @@ static bool attractor(void)
 
 		// converge, diverge
 		for (int i = 0; i < 2; ++i)
-			if (fabs(x[i]) > 1e10 || fabs(x[i] < 1e-10))
+			if (fabs(x[i]) > 1e10 || fabs(x[i]) < 1e-10)
 				return false;
 		if (n > CUTOFF)
 			for (int i = 0; i < 2; ++i) {
