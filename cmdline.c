@@ -58,6 +58,44 @@ static void help_mode(char *name, enum option_mode mode)
 	printf("[options]\n");
 }
 
+static bool has_doc(struct option *o)
+{
+	return o->doc != NULL;
+}
+
+static bool has_default(struct option *o)
+{
+	switch (o->type) {
+		case 'd':
+			return 0 != o->val.d;
+		case 'f':
+			return 0 != o->val.f;
+		case 'c':
+			return NULL != o->val.c;
+		case 's':
+			return NULL != o->val.s;
+	}
+	exit(1);
+}
+
+static void val_str(struct option *o, char buf[256])
+{
+	switch (o->type) {
+		case 'd':
+			snprintf(buf, 256, "%d", o->val.d);
+			break;
+		case 'f':
+			snprintf(buf, 256, "%.2f", o->val.f);
+			break;
+		case 'c':
+			snprintf(buf, 256, "%s", o->val.c);
+			break;
+		case 's':
+			snprintf(buf, 256, "%s", o->val.s);
+			break;
+	}
+}
+
 static void help(void)
 {
 	int indent = 0;
@@ -66,7 +104,6 @@ static void help(void)
 		int c = snprintf(buf, 256, "  --%s %s", options[i].name, type_str(options[i].type));
 		indent = MAX(c, indent);
 	}
-	printf("%d\n", indent);
 
 	printf("usage\n");
 	help_mode("image", IMAGE);
@@ -74,6 +111,14 @@ static void help(void)
 	printf("\noptions\n");
 	for (int i = 0; i < LENGTH(options); ++i) {
 		int c = printf("  --%s %s", options[i].name, type_str(options[i].type));
-		printf("%*s  %s\n", indent - c, "", options[i].doc ? options[i].doc : "");
+		printf("%*s  %s", indent - c, "", has_doc(&options[i]) ? options[i].doc : "");
+		if (has_default(&options[i])) {
+			if (has_doc(&options[i]))
+				printf(", ");
+			char buf[256];
+			val_str(&options[i], buf);
+			printf("default: %s", buf);
+		}
+		putchar('\n');
 	}
 }
