@@ -3,8 +3,24 @@ enum option_mode {
 	VIDEO = 2,
 };
 
+enum option_name {
+	OP_BORDER,
+	OP_COEFFICIENT,
+	OP_COLOUR,
+	OP_DURATION,
+	OP_END,
+	OP_FPS,
+	OP_HEIGHT,
+	OP_INTENSITY,
+	OP_PARAMS,
+	OP_PREVIEW,
+	OP_QUALITY,
+	OP_START,
+	OP_WIDTH,
+};
+
 struct option {
-	char *name;
+	char *str;
 	enum option_mode mode;
 	char type;
 	union {
@@ -14,23 +30,23 @@ struct option {
 		char *s;
 	} val;
 	char *doc;
-	char *conflicts;
+	enum option_name conflicts;
 };
 
 struct option options[] = {
-	{ .name = "border", .type = 'f', .val.f = 0.05, },
-	{ .name = "coefficient", .mode = VIDEO, .type = 's', .doc = "coefficient to change during the video, must have regex \"[xy][0-5]\"", },
-	{ .name = "colour", .type = 'c', .doc = "how to colour the attractor"},
-	{ .name = "duration", .mode = VIDEO, .type = 'd', .val.d = 40, .doc = "duration in seconds", .conflicts = "preview", },
-	{ .name = "end", .mode = VIDEO, .type = 'f', .doc = "end value for coefficient," },
-	{ .name = "fps", .mode = VIDEO, .type = 'd', .val.d = 24, .conflicts = "preview", },
-	{ .name = "height", .type = 'd', .val.d = 720, },
-	{ .name = "intensity", .type = 'f', .val.f = 50, .doc = "how bright the iterations make each pixel"},
-	{ .name = "params", .type = 's', .doc = "file containing lines of 12 space separated floats"},
-	{ .name = "preview", .type = 'd', .doc = "show grid of some thumbnails" },
-	{ .name = "quality", .type = 'd', .val.d = 25, .doc = "how many iterations to do per pixel" },
-	{ .name = "start", .mode = VIDEO, .type = 'f', .doc = "start value for coefficient," },
-	{ .name = "width", .type = 'd', .val.d = 1280, },
+	[OP_BORDER] = { .str = "border", .type = 'f', .val.f = 0.05, },
+	[OP_COEFFICIENT] = { .str = "coefficient", .mode = VIDEO, .type = 's', .doc = "coefficient to change during the video, must have regex \"[xy][0-5]\"", },
+	[OP_COLOUR] = { .str = "colour", .type = 'c', .doc = "how to colour the attractor"},
+	[OP_DURATION] = { .str = "duration", .mode = VIDEO, .type = 'd', .val.d = 40, .doc = "duration in seconds", .conflicts = OP_PREVIEW, },
+	[OP_END] = { .str = "end", .mode = VIDEO, .type = 'f', .doc = "end value for coefficient," },
+	[OP_FPS] = { .str = "fps", .mode = VIDEO, .type = 'd', .val.d = 24, .conflicts = OP_PREVIEW, },
+	[OP_HEIGHT] = { .str = "height", .type = 'd', .val.d = 720, },
+	[OP_INTENSITY] = { .str = "intensity", .type = 'f', .val.f = 50, .doc = "how bright the iterations make each pixel"},
+	[OP_PARAMS] = { .str = "params", .type = 's', .doc = "file containing lines of 12 space separated floats"},
+	[OP_PREVIEW] = { .str = "preview", .type = 'd', .doc = "show grid of some thumbnails" },
+	[OP_QUALITY] = { .str = "quality", .type = 'd', .val.d = 25, .doc = "how many iterations to do per pixel" },
+	[OP_START] = { .str = "start", .mode = VIDEO, .type = 'f', .doc = "start value for coefficient," },
+	[OP_WIDTH] = { .str = "width", .type = 'd', .val.d = 1280, },
 };
 
 static char *type_str(char t)
@@ -54,14 +70,14 @@ static void help_mode(char *name, enum option_mode mode)
 			printf("\n");
 			c = printf("    ");
 		}
-		c += printf("[--%s %s] ", options[i].name, type_str(options[i].type));
+		c += printf("[--%s %s] ", options[i].str, type_str(options[i].type));
 	}
 	printf("[options]\n");
 }
 
 static bool has_conflicts(struct option *o)
 {
-	return o->conflicts != NULL;
+	return o->conflicts != 0;
 }
 
 static bool has_doc(struct option *o)
@@ -107,7 +123,7 @@ static void help(void)
 	int indent = 0;
 	for (int i = 0; i < LENGTH(options); ++i) {
 		char buf[256];
-		int c = snprintf(buf, 256, "  --%s %s", options[i].name, type_str(options[i].type));
+		int c = snprintf(buf, 256, "  --%s %s", options[i].str, type_str(options[i].type));
 		indent = MAX(c, indent);
 	}
 
@@ -116,7 +132,7 @@ static void help(void)
 	help_mode("attractor video", VIDEO);
 	printf("\noptions\n");
 	for (int i = 0; i < LENGTH(options); ++i) {
-		int c = printf("  --%s %s", options[i].name, type_str(options[i].type));
+		int c = printf("  --%s %s", options[i].str, type_str(options[i].type));
 		printf("%*s  %s", indent - c, "", has_doc(&options[i]) ? options[i].doc : "");
 		if (has_default(&options[i])) {
 			if (has_doc(&options[i]))
@@ -125,10 +141,10 @@ static void help(void)
 			val_str(&options[i], buf);
 			printf("default: %s", buf);
 		}
-		if (options[i].conflicts != NULL) {
+		if (has_conflicts(&options[i])) {
 			if (has_default(&options[i]) || has_doc(&options[i]))
 				printf(", ");
-			printf("conficts with \"--%s\"", options[i].conflicts);
+			printf("conficts with \"--%s\"", options[options[i].conflicts].str);
 		}
 		putchar('\n');
 	}
