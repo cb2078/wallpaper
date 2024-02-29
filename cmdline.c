@@ -105,17 +105,18 @@ static void val_str(struct option *o, char buf[256])
 	switch (o->type) {
 		case 'd':
 			snprintf(buf, 256, "%d", o->val.d);
-			break;
+			return;
 		case 'f':
 			snprintf(buf, 256, "%.2f", o->val.f);
-			break;
+			return;
 		case 'c':
 			snprintf(buf, 256, "%s", o->val.c);
-			break;
+			return;
 		case 's':
 			snprintf(buf, 256, "%s", o->val.s);
-			break;
+			return;
 	}
+	exit(1);
 }
 
 static void help(void)
