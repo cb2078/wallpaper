@@ -14,15 +14,16 @@ struct option {
 		char *s;
 	} val;
 	char *doc;
+	char *conflicts;
 };
 
 struct option options[] = {
 	{ .name = "border", .type = 'f', .val.f = 0.05, },
 	{ .name = "coefficient", .mode = VIDEO, .type = 's', .doc = "coefficient to change during the video, must have regex \"[xy][0-5]\"", },
 	{ .name = "colour", .type = 'c', .doc = "how to colour the attractor"},
-	{ .name = "duration", .mode = VIDEO, .type = 'd', .val.d = 40, .doc = "duration in seconds"},
+	{ .name = "duration", .mode = VIDEO, .type = 'd', .val.d = 40, .doc = "duration in seconds", .conflicts = "preview", },
 	{ .name = "end", .mode = VIDEO, .type = 'f', .doc = "end value for coefficient," },
-	{ .name = "fps", .mode = VIDEO, .type = 'd', .val.d = 24, },
+	{ .name = "fps", .mode = VIDEO, .type = 'd', .val.d = 24, .conflicts = "preview", },
 	{ .name = "height", .type = 'd', .val.d = 720, },
 	{ .name = "intensity", .type = 'f', .val.f = 50, .doc = "how bright the iterations make the pixel"},
 	{ .name = "params", .type = 's', .doc = "file containing lines of 12 space separated floats"},
@@ -56,6 +57,11 @@ static void help_mode(char *name, enum option_mode mode)
 		c += printf("[--%s %s] ", options[i].name, type_str(options[i].type));
 	}
 	printf("[options]\n");
+}
+
+static bool has_conflicts(struct option *o)
+{
+	return o->conflicts != NULL;
 }
 
 static bool has_doc(struct option *o)
@@ -118,6 +124,11 @@ static void help(void)
 			char buf[256];
 			val_str(&options[i], buf);
 			printf("default: %s", buf);
+		}
+		if (options[i].conflicts != NULL) {
+			if (has_default(&options[i]) || has_doc(&options[i]))
+				printf(", ");
+			printf("conficts with \"--%s\"", options[i].conflicts);
 		}
 		putchar('\n');
 	}
