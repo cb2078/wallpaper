@@ -25,7 +25,7 @@ struct option options[] = {
 	{ .name = "end", .mode = VIDEO, .type = 'f', .doc = "end value for coefficient," },
 	{ .name = "fps", .mode = VIDEO, .type = 'd', .val.d = 24, .conflicts = "preview", },
 	{ .name = "height", .type = 'd', .val.d = 720, },
-	{ .name = "intensity", .type = 'f', .val.f = 50, .doc = "how bright the iterations make the pixel"},
+	{ .name = "intensity", .type = 'f', .val.f = 50, .doc = "how bright the iterations make each pixel"},
 	{ .name = "params", .type = 's', .doc = "file containing lines of 12 space separated floats"},
 	{ .name = "preview", .type = 'd', .doc = "show grid of some thumbnails" },
 	{ .name = "quality", .type = 'd', .val.d = 25, .doc = "how many iterations to do per pixel" },
@@ -112,8 +112,8 @@ static void help(void)
 	}
 
 	printf("usage\n");
-	help_mode("image", IMAGE);
-	help_mode("video", VIDEO);
+	help_mode("attractor image", IMAGE);
+	help_mode("attractor video", VIDEO);
 	printf("\noptions\n");
 	for (int i = 0; i < LENGTH(options); ++i) {
 		int c = printf("  --%s %s", options[i].name, type_str(options[i].type));
