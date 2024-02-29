@@ -31,6 +31,8 @@ const enum colour_type COLOUR = BW;
 #define MIN(x, y)	((x) < (y) ? (x) : (y))
 #define LENGTH(a)	(sizeof(a) / sizeof(a[0]))
 
+#include "cmdline.c"
+
 static double c[6][2];
 static double x_min[2];
 static double x_max[2];
@@ -365,17 +367,5 @@ static void video_params(double **cn, double *start, double *end)
 
 int main(void)
 {
-	srand((unsigned)time(0));
-
-	sample_attractor(25);
-
-	random_c();
-	double *cn, start, end;
-	video_params(&cn, &start, &end);
-	char params[256];
-	str_c(params);
-	video_preview(params, cn, start, end, 25);
-
-	puts("done");
-	return 0;
+	help();
 }
