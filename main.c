@@ -349,23 +349,27 @@ static void video_params(double **cn, double *start, double *end)
 	int i = 2 * rand() / RAND_MAX;
 	int j = 6 * rand() / RAND_MAX;
 	*cn = &c[j][i];
-	static double step = 1e-2;
 
+	static double step = 1e-2;
 	double tmp = c[j][i];
 	double dt = 0;
-	do {
-		dt += step;
-		c[j][i] = tmp - dt;
-	} while (attractor());
-	*start = -dt;
+	if (start) {
+		do {
+			dt += step;
+			c[j][i] = tmp - dt;
+		} while (attractor());
+		*start = -dt;
+	}
 
-	c[j][i] = tmp;
-	dt = 0;
-	do {
-		dt += step;
-		c[j][i] = tmp + dt;
-	} while (attractor());
-	*end = dt;
+	if (end) {
+		c[j][i] = tmp;
+		dt = 0;
+		do {
+			dt += step;
+			c[j][i] = tmp + dt;
+		} while (attractor());
+		*end = dt;
+	}
 }
 
 int main(int argc, char **argv)
@@ -415,12 +419,12 @@ int main(int argc, char **argv)
 		case VIDEO:
 			// make a preview
 			if (SAMPLES > 0) {
-				double *cn, start, end;
-				video_params(&cn, &start, &end);
+				double *cn;
+				video_params(&cn, is_set(OP_START) ? NULL : &START, is_set(OP_END) ? NULL : &END);
 				random_c();
 				char buf[256];
 				str_c(buf);
-				video_preview(buf, cn, start, end, SAMPLES);
+				video_preview(buf, cn, START, END, SAMPLES);
 			} else {
 				fprintf(stderr, "video rendering not supported\n");
 				exit(1);

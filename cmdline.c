@@ -21,7 +21,7 @@ enum option_name {
 
 enum option_type {
 	INT,
-	FLOAT,
+	DOUBLE,
 	ENUM,
 	STRING,
 };
@@ -32,7 +32,7 @@ struct option {
 	enum option_type type;
 	union {
 		int d;
-		float f;
+		double f;
 		enum colour_type c;
 		char *s;
 	} val;
@@ -44,7 +44,7 @@ struct option {
 struct option options[] = {
 	[OP_BORDER] = {
 		.str = "border",
-		.type = FLOAT,
+		.type = DOUBLE,
 		.val.f = 0.05f,
 	},
 	[OP_COEFFICIENT] = {
@@ -69,7 +69,7 @@ struct option options[] = {
 	[OP_END] = {
 		.str = "end",
 		.mode = VIDEO,
-		.type = FLOAT,
+		.type = DOUBLE,
 		.doc = "end value for coefficient",
 	},
 	[OP_FPS] = {
@@ -86,7 +86,7 @@ struct option options[] = {
 	},
 	[OP_INTENSITY] = {
 		.str = "intensity",
-		.type = FLOAT,
+		.type = DOUBLE,
 		.val.f = 50,
 		.doc = "how bright the iterations make each pixel",
 	},
@@ -109,7 +109,7 @@ struct option options[] = {
 	[OP_START] = {
 		.str = "start",
 		.mode = VIDEO,
-		.type = FLOAT,
+		.type = DOUBLE,
 		.doc = "start value for coefficient",
 	},
 	[OP_WIDTH] = {
@@ -138,7 +138,7 @@ static char *type_str(enum option_type type)
 	switch (type) {
 		case INT:
 			return "<int>";
-		case FLOAT:
+		case DOUBLE:
 			return "<float>";
 		case ENUM:
 			return  "(BW|WB|HSV|RGB)";
@@ -177,7 +177,7 @@ static bool has_default(struct option *o)
 	switch (o->type) {
 		case INT:
 			return 0 != o->val.d;
-		case FLOAT:
+		case DOUBLE:
 			return 0 != o->val.f;
 		case ENUM:
 			return true;
@@ -193,7 +193,7 @@ static void val_str(struct option *o, char buf[256])
 		case INT:
 			snprintf(buf, 256, "%d", o->val.d);
 			return;
-		case FLOAT:
+		case DOUBLE:
 			snprintf(buf, 256, "%.2f", o->val.f);
 			return;
 		case ENUM:
@@ -284,7 +284,7 @@ static void parse_option(int mode, char *flag, char *val)
 			case INT:
 				format = "%d";
 				break;
-			case FLOAT:
+			case DOUBLE:
 				format = "%lf";
 				break;
 			case ENUM:
@@ -355,4 +355,9 @@ static void print_values(int mode)
 		printf(" --%s %s", options[i].str, buf);
 	}
 	putchar('\n');
+}
+
+static bool is_set(enum option_name o)
+{
+	return options[o].set;
 }
