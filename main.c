@@ -113,12 +113,12 @@ static void random_c(void)
 	} while (attractor() == false);
 }
 
-static int set_c(const char buf[256])
+static bool set_c(const char buf[256])
 {
-	int result = 1;
+	bool result = true;
 	for (int i = 0; i < 2; ++i)
 		for (int j = 0; j < 6; ++j)
-			result = result && sscanf(buf + 7 * (i * 6 + j), "%lf", &c[j][i]);
+			result = result && (bool)sscanf(buf + 7 * (i * 6 + j), "%lf", &c[j][i]);
 	return result;
 }
 
@@ -274,7 +274,7 @@ static int write_samples(char name[], char (*params_array)[256], int samples)
 		int j = s % n;
 
 		set_c(params_array[s]);
-		fprintf(f, "%3d\t%s\n", s + 1, params_array[s]);
+		fprintf(f, "%s\n", params_array[s]);
 
 		attractor();
 		render_image(tmp);
@@ -295,6 +295,7 @@ static void write_attractor(char *name)
 	static char (*buf)[WIDTH][3] = NULL;
 	if (buf == NULL)
 		buf = malloc(sizeof(char) * HEIGHT * WIDTH * 3);
+	attractor();
 	render_image(buf);
 	write_image(name, WIDTH, HEIGHT, buf);
 }
@@ -374,6 +375,8 @@ static void video_params(double **cn, double *start, double *end)
 
 int main(int argc, char **argv)
 {
+	srand(time(NULL));
+
 	// print help if no args
 	if (argc <= 1) {
 		help();
@@ -404,15 +407,33 @@ int main(int argc, char **argv)
 
 	switch (mode) {
 		case IMAGE:
-			// draw samples
-			if (SAMPLES > 0)
+			if (SAMPLES) {
 				sample_attractor(SAMPLES);
-			else {
+			} else if (PARAMS) {
+				FILE *f = fopen(PARAMS, "r");
+				if (f == NULL) {
+					fprintf(stderr, "option error: --params could not open \"%s\"\n", PARAMS);
+					exit(1);
+				}
+				char buf[256];
+				for (int i = 0; fgets(buf, 256, f); ++i) {
+					int result = set_c(buf);
+					if (!result) {
+						fprintf(stderr, "parse error when reading \"%s\", line %d:\n", PARAMS, i);
+						fprintf(stderr, "%s", buf);
+						fprintf(stderr, "%s should be a %s\n", PARAMS, options[OP_PARAMS].doc);
+						exit(1);
+					}
+					char name[256];
+					snprintf(name, 256, "images/%d.png", i);
+					write_attractor(name);
+				}
+			} else {;
 				random_c();
 				char buf[256];
 				str_c(buf);
 				char name[256];
-				snprintf(name, 256, "images/%s.png", buf);
+				snprintf(name, 256, "images/single.png");
 				write_attractor(name);
 			}
 			break;

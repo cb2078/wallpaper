@@ -94,6 +94,7 @@ struct option options[] = {
 		.str = "params",
 		.type = STRING,
 		.doc = "file containing lines of 12 space separated floats",
+		.conflicts = OP_PREVIEW,
 	},
 	[OP_PREVIEW] = {
 		.str = "preview",
@@ -288,9 +289,7 @@ static void parse_option(int mode, char *flag, char *val)
 				format = "%lf";
 				break;
 			case ENUM:
-				break;
 			case STRING:
-				format = "%s";
 				break;
 		}
 		// set the option
@@ -334,7 +333,7 @@ static void parse_option(int mode, char *flag, char *val)
 				CJ = d;
 			} break;
 			case OP_PARAMS:
-				nyi(flag);
+				PARAMS = val;
 				break;
 		}
 
