@@ -26,11 +26,12 @@ struct option {
 	union {
 		int d;
 		float f;
-		char *c;
+		enum colour_type c;
 		char *s;
 	} val;
 	char *doc;
 	enum option_name conflicts;
+	bool set;
 };
 
 struct option options[] = {
@@ -111,6 +112,20 @@ struct option options[] = {
 	},
 };
 
+#define BORDER      options[OP_BORDER].val.f
+int CI, CJ;
+#define COLOUR      options[OP_COLOUR].val.c
+#define DURATION    options[OP_DURATION].val.d
+#define END         options[OP_END].val.f
+#define FPS         options[OP_FPS].val.d
+#define HEIGHT      options[OP_HEIGHT].val.d
+#define INTENSITY   options[OP_INTENSITY].val.f
+#define PARAMS      options[OP_PARAMS].val.s
+#define PREVIEW     options[OP_PREVIEW].val.d
+#define QUALITY     options[OP_QUALITY].val.d
+#define START       options[OP_START].val.f
+#define WIDTH       options[OP_WIDTH].val.d
+
 static char *type_str(char t)
 {
 	static char *names[] = {
@@ -155,7 +170,7 @@ static bool has_default(struct option *o)
 		case 'f':
 			return 0 != o->val.f;
 		case 'c':
-			return NULL != o->val.c;
+			return true;
 		case 's':
 			return NULL != o->val.s;
 	}
@@ -164,6 +179,7 @@ static bool has_default(struct option *o)
 
 static void val_str(struct option *o, char buf[256])
 {
+	// TODO enum for type
 	switch (o->type) {
 		case 'd':
 			snprintf(buf, 256, "%d", o->val.d);
@@ -172,7 +188,7 @@ static void val_str(struct option *o, char buf[256])
 			snprintf(buf, 256, "%.2f", o->val.f);
 			return;
 		case 'c':
-			snprintf(buf, 256, "%s", o->val.c);
+			strncpy(buf, colour_map[o->val.c], 256);
 			return;
 		case 's':
 			snprintf(buf, 256, "%s", o->val.s);
@@ -238,23 +254,6 @@ static void option_type_error(char *flag, char type, char *val)
 	option_error(flag, type_str(type), val);
 }
 
-static int parse_colour(char *s)
-{
-	static struct {
-		enum colour_type key;
-		char *val;
-	} table[] = {
-		{BW, "BW"},
-		{HSV, "HSV"},
-		{RGB, "RGB"},
-	};
-
-	for (int i = 0; i < LENGTH(table); ++i)
-		if (0 == strcmp(table[i].val, s))
-			return table[i].key;
-	return -1;
-}
-
 static void nyi(char *flag)
 {
 	fprintf(stderr, "%s not yet implemented\n", flag);
@@ -287,7 +286,6 @@ static void parse_option(int mode, char *flag, char *val)
 				exit(1);
 				break;
 		}
-
 		// set the option
 		switch (o) {
 #define CASE(x) \
@@ -310,10 +308,13 @@ static void parse_option(int mode, char *flag, char *val)
 #undef CASE
 			case OP_COLOUR:
 			{
-				int result = parse_colour(val);
-				if (result < 0)
+				int i;
+				for (i = 0; i < LENGTH(colour_map); ++i)
+					if (0 == strcmp(colour_map[i], val))
+						break;
+				if (i == LENGTH(colour_map))
 					option_type_error(flag, options[o].type, val);
-				COLOUR = result;
+				COLOUR = (enum colour_type)i;
 			} break;
 			case OP_COEFFICIENT:
 			{
@@ -329,4 +330,22 @@ static void parse_option(int mode, char *flag, char *val)
 				nyi(flag);
 				break;
 		}
+
+		// finally mark the option as set
+		options[o].set = true;
+}
+
+static void print_values(int mode)
+{
+	printf("using options");
+	for (int i = 0; i < LENGTH(options); ++i) {
+		if (!options[i].set && !has_default(&options[i]))
+			continue;
+		if (options[i].mode && options[i].mode != mode)
+			continue;
+		char buf[256];
+		val_str(&options[i], buf);
+		printf(" --%s %s", options[i].str, buf);
+	}
+	putchar('\n');
 }

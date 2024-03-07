@@ -17,21 +17,15 @@ enum colour_type {
 	RGB,
 };
 
-unsigned CUTOFF = 10000;
-int WIDTH = 800;
-int HEIGHT = 600;
-unsigned QUALITY = 25;
-double INTENSITY = 50;
-double BORDER = 0.05;
-unsigned SAMPLES;
-#define PREVIEW SAMPLES
-enum colour_type COLOUR = BW;
-unsigned DURATION = 40;
-unsigned START, END;
-unsigned FPS = 24;
-unsigned CI, CJ;
+char *colour_map[] = {
+	[BW] = "BW",
+	[HSV] = "HSV",
+	[RGB] = "RGB",
+};
 
+unsigned CUTOFF = 10000;
 unsigned ITERATIONS;
+#define SAMPLES PREVIEW
 
 #define MAX(x, y)	((x) > (y) ? (x) : (y))
 #define MIN(x, y)	((x) < (y) ? (x) : (y))
@@ -400,6 +394,9 @@ int main(int argc, char **argv)
 		i += 2;
 	}
 	ITERATIONS = WIDTH * HEIGHT * QUALITY;
+
+	// print the configuration
+	print_values(mode);
 
 	switch (mode) {
 		case IMAGE:
