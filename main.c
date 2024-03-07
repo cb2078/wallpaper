@@ -17,15 +17,21 @@ enum colour_type {
 	RGB,
 };
 
-const unsigned CUTOFF = 10000;
-const int WIDTH = 800;
-const int HEIGHT = 600;
-const unsigned QUALITY = 25;
-const unsigned ITERATIONS = WIDTH * HEIGHT * QUALITY;
-const double INTENSITY = 50;
-const double BOARDER = 0.05;
-const unsigned SAMPLES = 50;
-const enum colour_type COLOUR = BW;
+unsigned CUTOFF = 10000;
+int WIDTH = 800;
+int HEIGHT = 600;
+unsigned QUALITY = 25;
+double INTENSITY = 50;
+double BORDER = 0.05;
+unsigned SAMPLES;
+#define PREVIEW SAMPLES
+enum colour_type COLOUR = BW;
+unsigned DURATION = 40;
+unsigned START, END;
+unsigned FPS = 24;
+unsigned CI, CJ;
+
+unsigned ITERATIONS;
 
 #define MAX(x, y)	((x) > (y) ? (x) : (y))
 #define MIN(x, y)	((x) < (y) ? (x) : (y))
@@ -183,8 +189,7 @@ static void HSV_to_RGB(double H, double S, double V, char RGB[3])
 static void render_image(char buf[HEIGHT][WIDTH][3])
 {
 	memset(buf, 0, sizeof(char) * HEIGHT * WIDTH * 3);
-	static double info[HEIGHT][WIDTH][4];
-	memset(info, 0, sizeof(double) * HEIGHT * WIDTH * 4);
+	double (*info)[WIDTH][4] = calloc(1, sizeof(double) * HEIGHT * WIDTH * 4);
 
 	double x[2] = {0, 0};
 	for (unsigned n = 0; n < CUTOFF; ++n)
@@ -195,7 +200,7 @@ static void render_image(char buf[HEIGHT][WIDTH][3])
 	int o = range[0] < range[1];
 	double x_scale = (WIDTH - 1) / (x_max[o] - x_min[o]);
 	double y_scale = (HEIGHT - 1) / (x_max[!o] - x_min[!o]);
-	double scale = MIN(x_scale, y_scale) * (1 - BOARDER);
+	double scale = MIN(x_scale, y_scale) * (1 - BORDER);
 	unsigned count = 0;
 	for (unsigned n = CUTOFF; n < ITERATIONS; ++n) {
 		double x_last[2];
@@ -266,11 +271,13 @@ static int write_samples(char name[], char (*params_array)[256], int samples)
 	snprintf(txt, 256, "images/%s.txt", name);
 	FILE *f = fopen(txt, "w");
 
+	static char (*tmp)[WIDTH][3] = NULL;
+	if (tmp == NULL)
+		tmp = malloc(sizeof(char) * HEIGHT * WIDTH * 3);
 	for (int s = 0; s < samples; ++s) {
 		printf("%3d/%d\n", 1 + s, samples);
 		int i = s / n;
 		int j = s % n;
-		static char tmp[HEIGHT][WIDTH][3];
 
 		set_c(params_array[s]);
 		fprintf(f, "%3d\t%s\n", s + 1, params_array[s]);
@@ -291,7 +298,9 @@ static int write_samples(char name[], char (*params_array)[256], int samples)
 
 static void write_attractor(char *name)
 {
-	static char buf[HEIGHT][WIDTH][3];
+	static char (*buf)[WIDTH][3] = NULL;
+	if (buf == NULL)
+		buf = malloc(sizeof(char) * HEIGHT * WIDTH * 3);
 	render_image(buf);
 	write_image(name, WIDTH, HEIGHT, buf);
 }
@@ -365,7 +374,60 @@ static void video_params(double **cn, double *start, double *end)
 	*end = dt;
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
-	help();
+	// print help if no args
+	if (argc <= 1) {
+		help();
+		exit(0);
+	}
+
+	// get the mode
+	unsigned mode;
+	if (0 == strcmp("video", argv[1]))
+		mode = VIDEO;
+	else if (0 == strcmp("image", argv[1]))
+		mode = IMAGE;
+	else {
+		fprintf(stderr, "unknown mode: %s", argv[1]);
+		exit(1);
+	}
+
+	// parse and set the options
+	assert(argc % 2 == 0);
+	for (int i = 2; i < argc;) {
+		parse_option(mode, argv[i], argv[i + 1]);
+		i += 2;
+	}
+	ITERATIONS = WIDTH * HEIGHT * QUALITY;
+
+	switch (mode) {
+		case IMAGE:
+			// draw samples
+			if (SAMPLES > 0)
+				sample_attractor(SAMPLES);
+			else {
+				random_c();
+				char buf[256];
+				str_c(buf);
+				char name[256];
+				snprintf(name, 256, "images/%s.png", buf);
+				write_attractor(name);
+			}
+			break;
+		case VIDEO:
+			// make a preview
+			if (SAMPLES > 0) {
+				double *cn, start, end;
+				video_params(&cn, &start, &end);
+				random_c();
+				char buf[256];
+				str_c(buf);
+				video_preview(buf, cn, start, end, SAMPLES);
+			} else {
+				fprintf(stderr, "video rendering not supported\n");
+				exit(1);
+			}
+			break;
+	}
 }
