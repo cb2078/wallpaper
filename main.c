@@ -389,7 +389,7 @@ int main(int argc, char **argv)
 	else if (0 == strcmp("image", argv[1]))
 		mode = IMAGE;
 	else {
-		fprintf(stderr, "unknown mode: %s", argv[1]);
+		fprintf(stderr, "unknown mode: %s, expected \"image\" or \"video\"\n", argv[1]);
 		exit(1);
 	}
 

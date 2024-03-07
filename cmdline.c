@@ -227,7 +227,18 @@ err:
 	exit(1);
 }
 
-static enum colour_type parse_colour(char *s)
+static void option_error(char *flag, char *expected, char *val)
+{
+	fprintf(stderr, "option error: %s expected %s, got %s\n", flag, expected, val);
+	exit(1);
+}
+
+static void option_type_error(char *flag, char type, char *val)
+{
+	option_error(flag, type_str(type), val);
+}
+
+static int parse_colour(char *s)
 {
 	static struct {
 		enum colour_type key;
@@ -241,9 +252,7 @@ static enum colour_type parse_colour(char *s)
 	for (int i = 0; i < LENGTH(table); ++i)
 		if (0 == strcmp(table[i].val, s))
 			return table[i].key;
-
-	fprintf(stderr, "value error: --colour expected %s, got %s\n", type_str('c'), s);
-	exit(1);
+	return -1;
 }
 
 static void nyi(char *flag)
@@ -281,8 +290,13 @@ static void parse_option(int mode, char *flag, char *val)
 
 		// set the option
 		switch (o) {
-			// TODO sscanf error
-#define CASE(x) case OP_##x: sscanf(val, format, &x); break
+#define CASE(x) \
+	case OP_##x: \
+	{ \
+		int result = sscanf(val, format, &x); \
+		if (result < 1) \
+			option_type_error(flag, options[o].type, val); \
+	} break;
 			CASE(BORDER);
 			CASE(DURATION);
 			CASE(END);
@@ -295,17 +309,19 @@ static void parse_option(int mode, char *flag, char *val)
 			CASE(WIDTH);
 #undef CASE
 			case OP_COLOUR:
-				COLOUR = parse_colour(val);
-				break;
+			{
+				int result = parse_colour(val);
+				if (result < 0)
+					option_type_error(flag, options[o].type, val);
+				COLOUR = result;
+			} break;
 			case OP_COEFFICIENT:
 			{
 				char c;
 				int d;
-				int result = sscanf(val, "%c%1d", &c, &d);
-				if (result < 0) {
-					fprintf(stderr, "%s expected regex \"[xy][0-5]\", got %s\n", flag, val);
-					exit(1);
-				}
+				int result = sscanf(val, "%c%d", &c, &d);
+				if (result < 2 || (c != 'x' && c != 'y') || (d < 0 || d >= 6))
+					option_error(flag, "regex [xy][0-5]", val);
 				CI = c == 'x' ? 0 : 1;
 				CJ = d;
 			} break;
