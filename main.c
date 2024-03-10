@@ -90,7 +90,7 @@ static bool attractor(void)
 		for (int i = 0; i < 2; ++i)
 			if (fabs(x[i]) > 1e10 || fabs(x[i]) < 1e-10)
 				return false;
-		if (n > CUTOFF)
+		if (n > CUTOFF) {
 			for (int i = 0; i < 2; ++i) {
 				v[i] = x[i] - x_last[i];
 				x_max[i] = MAX(x_max[i], x[i]);
@@ -100,6 +100,7 @@ static bool attractor(void)
 			// lyapunov exponent
 			double d = dst(x, xe);
 			lyapunov += log(fabs(d / d0));
+		}
 	}
 	return lyapunov / CUTOFF > 10;
 }
