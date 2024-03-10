@@ -226,6 +226,23 @@ static void render_image(char buf[HEIGHT][WIDTH][3])
 	double x_scale = (WIDTH - 1) / (x_max[o] - x_min[o]);
 	double y_scale = (HEIGHT - 1) / (x_max[!o] - x_min[!o]);
 	double scale = MIN(x_scale, y_scale) * (1 - BORDER);
+
+#if D == 2 && defined(MANDLEBROT)
+	for (int i = 0; i < HEIGHT; ++i)
+		for (int j = 0; j < WIDTH; ++j) {
+			double x[2];
+			x[!o] = (double)i / HEIGHT * 4 - 2;
+			x[ o] = (double)j / WIDTH * 4 - 2;
+			unsigned n = 0;
+			for (; n < 1000; ++n) {
+				iteration(x);
+				if (fabs(x[0]) > 1e10 || fabs(x[0]) < 1e-10 || fabs(x[1]) > 1e10 || fabs(x[1]) < 1e-10)
+					break;
+			}
+			buf[i][j][0] = buf[i][j][1] = buf[i][j][2] = (char)(0x7 * n);
+		}
+#endif
+
 	unsigned count = 0;
 	for (unsigned n = CUTOFF; n < ITERATIONS; ++n) {
 		double x_last[D];
