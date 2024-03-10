@@ -278,7 +278,7 @@ static int write_samples(char name[], char (*params_array)[256], int samples)
 		int j = s % n;
 
 		set_c(params_array[s]);
-		fprintf(f, "%s\n", params_array[s]);
+		fprintf(f, "%s # %d\n", params_array[s], 1 + s);
 
 		attractor();
 		render_image(tmp);
