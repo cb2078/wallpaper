@@ -129,55 +129,52 @@ static void str_c(char buf[256])
 			sprintf(buf + 7 * (i * 6 + j), "% 1.3f ", c[j][i]);
 }
 
-static char srgb(unsigned char a)
+static double srgb(double L)
 {
-	double L = (double)a / 0xff;
- 	double S = L <= 0.0031308 ? L * 12.92 :
-		1.055 * pow(L, 1 / 2.44) - 0.055;
-	return (unsigned char)(0xff * MIN(1, MAX(0, S)));
+	return L <= 0.0031308 ? L * 12.92
+		: 1.055 * pow(L, 1 / 2.44) - 0.055;
 }
 
-static void HSV_to_RGB(double H, double S, double V, char RGB[3])
+static void hsv_to_rgb(double H, double S, double V, double rgb[3])
 {
 	double C = V * S;
 	double HH = H / 60;
 	double X = C * (1 - fabs(fmod(HH, 2) - 1));
-	double RGB1[3];
 	switch ((int)floor(HH)) {
 		case 0:
-			RGB1[0] = C;
-			RGB1[1] = X;
-			RGB1[2] = 0;
+			rgb[0] = C;
+			rgb[1] = X;
+			rgb[2] = 0;
 			break;
 		case 1:
-			RGB1[0] = X;
-			RGB1[1] = C;
-			RGB1[2] = 0;
+			rgb[0] = X;
+			rgb[1] = C;
+			rgb[2] = 0;
 			break;
 		case 2:
-			RGB1[0] = 0;
-			RGB1[1] = C;
-			RGB1[2] = X;
+			rgb[0] = 0;
+			rgb[1] = C;
+			rgb[2] = X;
 			break;
 		case 3:
-			RGB1[0] = 0;
-			RGB1[1] = X;
-			RGB1[2] = C;
+			rgb[0] = 0;
+			rgb[1] = X;
+			rgb[2] = C;
 			break;
 		case 4:
-			RGB1[0] = X;
-			RGB1[1] = 0;
-			RGB1[2] = C;
+			rgb[0] = X;
+			rgb[1] = 0;
+			rgb[2] = C;
 			break;
 		case 5:
-			RGB1[0] = C;
-			RGB1[1] = 0;
-			RGB1[2] = X;
+			rgb[0] = C;
+			rgb[1] = 0;
+			rgb[2] = X;
 			break;
 	}
 	double m = V - C;
 	for (int k = 0; k < 3; ++k)
-		RGB[k] = (char)((RGB1[k] + m) * 0xff);
+		rgb[k] = rgb[k] + m;
 }
 
 static void render_image(char buf[HEIGHT][WIDTH][3])
@@ -228,17 +225,22 @@ static void render_image(char buf[HEIGHT][WIDTH][3])
 				double H = 180 + (atan2(info[i][j][1], info[i][j][2]) * 180 / M_PI);
 				double S = 1;
 				double V = MIN(1, INTENSITY / DENSITY * info[i][j][0] / 0xff);
-				HSV_to_RGB(H, S, V, buf[i][j]);
+				double out[3];
+				hsv_to_rgb(H, S, V, out);
+				for (int k = 0; k < 3; ++k)
+					buf[i][j][k] = (char)(srgb(out[k]) * 0xff);
 			} else {
 				if (info[i][j][0])
-					for (int k = 0; k < 3; ++k)
-						buf[i][j][k] = (char)MIN(0xff, info[i][j][COLOUR == BW ? 0 : k + 1] * INTENSITY / DENSITY);
+					for (int k = 0; k < 3; ++k) {
+						double a = MIN(0xff, info[i][j][COLOUR == BW ? 0 : k + 1] * INTENSITY / DENSITY);
+						a /= 0xff;
+						a = srgb(a);
+						buf[i][j][k] = (char)(0xff * a);
+					}
 			}
-			for (int k = 0; k < 3; ++k) {
-				buf[i][j][k] = srgb(buf[i][j][k]);
-				if (COLOUR == BW)
+			if (COLOUR == BW)
+				for (int k = 0; k < 3; ++k)
 					buf[i][j][k] = 0xff - buf[i][j][k];
-			}
 		}
 
 	free(info);
