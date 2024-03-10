@@ -95,7 +95,7 @@ static bool attractor(void)
 				v[i] = x[i] - x_last[i];
 				x_max[i] = MAX(x_max[i], x[i]);
 				x_min[i] = MIN(x_min[i], x[i]);
-				v_max[i] = MAX(v[i], v_max[i]);
+				v_max[i] = MAX(fabs(v[i]), v_max[i]);
 			}
 			// lyapunov exponent
 			double d = dst(x, xe);
@@ -217,7 +217,7 @@ static void render_image(char buf[HEIGHT][WIDTH][3])
 		} else {
 			info[i][j][1] += MAX(0, v[0] / v_max[0]);
 			info[i][j][2] += MAX(0, -v[0] / v_max[0]);
-			info[i][j][3] += fabs(v[1]);
+			info[i][j][3] += fabs(v[1]) / v_max[1];
 		}
 	}
 	double DENSITY = (double)ITERATIONS / count;
@@ -438,7 +438,6 @@ int main(int argc, char **argv)
 			}
 			break;
 		case VIDEO:
-			// make a preview
 			if (SAMPLES > 0) {
 				double *cn;
 				video_params(&cn, is_set(OP_START) ? NULL : &START, is_set(OP_END) ? NULL : &END);
