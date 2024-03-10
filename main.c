@@ -30,22 +30,29 @@ unsigned ITERATIONS;
 #define MAX(x, y)	((x) > (y) ? (x) : (y))
 #define MIN(x, y)	((x) < (y) ? (x) : (y))
 #define LENGTH(a)	(sizeof(a) / sizeof(a[0]))
+#define D 3
+#define Dn ((D + 1) * (D + 2) / 2)
 
 #include "cmdline.c"
 
-static double c[6][2];
-static double x_min[2];
-static double x_max[2];
-static double v_max[2];
+static double c[Dn][D];
+static double x_min[D];
+static double x_max[D];
+static double v_max[D];
 
-static double dst(double x0[2], double x1[2])
+static double dst(double x0[D], double x1[D])
 {
-	double dx[2] = {x1[0] - x0[0], x1[1] - x0[1]};
-	return sqrt(dx[0] * dx[0] + dx[1] * dx[1]);
+	double s = 0;
+	for (int i = 0; i < D; ++i) {
+		double d = x1[i] - x0[i];
+		s += d * d;
+	}
+	return sqrt(s);
 }
 
-static void iteration(double y[2])
+static void iteration(double y[D])
 {
+#ifndef D
 	double z[2];
 	for (int i = 0; i < 2; ++i)
 		z[i] =
@@ -55,7 +62,17 @@ static void iteration(double y[2])
 			c[3][i] * y[0] * y[1] +
 			c[4][i] * y[1] * y[1] +
 			c[5][i] * y[1];
-	for (int i = 0; i < 2; ++i)
+#else
+#define Y(i) (i < D ? y[i] : 1)
+	double z[D] = {0, 0};
+	for (int i = 0; i < D; ++i) {
+		int a = 0;
+		for (int j = 0; j < D + 1; ++j)
+			for (int k = j; k < D + 1; ++k)
+				z[i] += c[a++][i] * Y(j) * Y(k);
+	}
+#endif
+	for (int i = 0; i < D; ++i)
 		y[i] = z[i];
 }
 
@@ -63,35 +80,37 @@ static void iteration(double y[2])
 static bool attractor(void)
 {
 	// initialize parameters
-	double x[2] = {0, 0};
-	double xe[2] = {0, 0};	// for lyapunov exponent
+	double x[D] = {0};
+	double xe[D] = {0};	// for lyapunov exponent
 	double d0;
 	do {
-		for (int i = 0; i < 2; ++i)
+		for (int i = 0; i < D; ++i)
 			xe[i] = x[i] + ((double)rand() / RAND_MAX - 0.5) / 1000;
 		d0 = dst(x, xe);
 	} while (d0 <= 0);
-	double v[2];
+	double v[D];
 
-	x_min[0] = x_min[1] = 1e10;
-	x_max[0] = x_max[1] = -1e10;
-	v_max[0] = v_max[1] = 0;
+	for (int i = 0; i < D; ++i) {
+		x_min[i] = 1e10;
+		x_max[i] = -1e10;
+		v_max[i] = 0;
+	}
 
 	double lyapunov = 0;
 	for (unsigned n = 0; n < CUTOFF * 2; ++n) {
-		double x_last[2];
-		for (int i = 0; i < 2; ++i)
+		double x_last[D];
+		for (int i = 0; i < D; ++i)
 			x_last[i] = x[i];
 
 		iteration(x);
 		iteration(xe);
 
 		// converge, diverge
-		for (int i = 0; i < 2; ++i)
+		for (int i = 0; i < D; ++i)
 			if (fabs(x[i]) > 1e10 || fabs(x[i]) < 1e-10)
 				return false;
 		if (n > CUTOFF) {
-			for (int i = 0; i < 2; ++i) {
+			for (int i = 0; i < D; ++i) {
 				v[i] = x[i] - x_last[i];
 				x_max[i] = MAX(x_max[i], x[i]);
 				x_min[i] = MIN(x_min[i], x[i]);
@@ -102,14 +121,14 @@ static bool attractor(void)
 			lyapunov += log(fabs(d / d0));
 		}
 	}
-	return lyapunov / CUTOFF > 10;
+	return lyapunov / CUTOFF > 5;
 }
 
 static void random_c(void)
 {
 	do {
-		for (int i = 0; i < 2; ++i)
-			for (int j = 0; j < 6; ++j)
+		for (int i = 0; i < D; ++i)
+			for (int j = 0; j < Dn; ++j)
 				c[j][i] = (double)rand() / RAND_MAX * 4 - 2;
 	} while (attractor() == false);
 }
@@ -117,17 +136,17 @@ static void random_c(void)
 static bool set_c(const char buf[256])
 {
 	bool result = true;
-	for (int i = 0; i < 2; ++i)
-		for (int j = 0; j < 6; ++j)
-			result = result && (bool)sscanf(buf + 7 * (i * 6 + j), "%lf", &c[j][i]);
+	for (int i = 0; i < D; ++i)
+		for (int j = 0; j < Dn; ++j)
+			result = result && (bool)sscanf(buf + 7 * (i * Dn + j), "%lf", &c[j][i]);
 	return result;
 }
 
 static void str_c(char buf[256])
 {
-	for (int i = 0; i < 2; ++i)
-		for (int j = 0; j < 6; ++j)
-			sprintf(buf + 7 * (i * 6 + j), "% 1.3f ", c[j][i]);
+	for (int i = 0; i < D; ++i)
+		for (int j = 0; j < Dn; ++j)
+			sprintf(buf + 7 * (i * Dn + j), "% 1.3f ", c[j][i]);
 }
 
 static double srgb(double L)
@@ -178,15 +197,29 @@ static void hsv_to_rgb(double H, double S, double V, double rgb[3])
 		rgb[k] = rgb[k] + m;
 }
 
+static void rgb_to_hsv(double r, double b, double g, double *h, double *s, double *v)
+{
+	double x_max = MAX(r, MAX(g, b));
+	double x_min = MIN(r, MIN(g, b));
+	double c = x_max - x_min;
+	*v = x_max;
+	*s = *v == 0 ? 0 : c / *v;
+	*h = c == 0 ?  0 :
+		*v == r ? 60 * ((g - b) / c) :
+		*v == g ? 60 * ((b - r) / c + 2) :
+		60 * ((r - g) / c + 4);
+	*h = *h < 0 ? 360 + *h : *h;
+}
+
 static void render_image(char buf[HEIGHT][WIDTH][3])
 {
 	memset(buf, 0, sizeof(char) * HEIGHT * WIDTH * 3);
 	double (*info)[WIDTH][4] = calloc(1, sizeof(double) * HEIGHT * WIDTH * 4);
 
-	double x[2] = {0, 0};
+	double x[D] = {0};
 	for (unsigned n = 0; n < CUTOFF; ++n)
 		iteration(x);
-	double v[2] = {0, 0};
+	double v[D] = {0};
 
 	double range[2] = {x_max[0] - x_min[0], x_max[1] - x_min[1]};
 	int o = range[0] < range[1];
@@ -195,11 +228,11 @@ static void render_image(char buf[HEIGHT][WIDTH][3])
 	double scale = MIN(x_scale, y_scale) * (1 - BORDER);
 	unsigned count = 0;
 	for (unsigned n = CUTOFF; n < ITERATIONS; ++n) {
-		double x_last[2];
-		for (int i = 0; i < 2; ++i)
+		double x_last[D];
+		for (int i = 0; i < D; ++i)
 			x_last[i] = x[i];
 		iteration(x);
-		for (int i = 0; i < 2; ++i)
+		for (int i = 0; i < D; ++i)
 			v[i] = x[i] - x_last[i];
 
 		int i = (int)((HEIGHT - range[!o] * scale) / 2 + (x[!o] - x_min[!o]) * scale);
@@ -353,8 +386,8 @@ static void video_preview(const char *params, double *cn, double start, double e
 
 static void video_params(double **cn, double *start, double *end)
 {
-	int i = 2 * rand() / RAND_MAX;
-	int j = 6 * rand() / RAND_MAX;
+	int i = D * rand() / RAND_MAX;
+	int j = Dn * rand() / RAND_MAX;
 	*cn = &c[j][i];
 
 	static double step = 1e-2;
