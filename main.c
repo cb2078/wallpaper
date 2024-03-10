@@ -240,6 +240,8 @@ static void render_image(char buf[HEIGHT][WIDTH][3])
 					buf[i][j][k] = 0xff - buf[i][j][k];
 			}
 		}
+
+	free(info);
 }
 
 static int write_image(char *name, int width, int height, void *buf)
@@ -310,6 +312,7 @@ static void sample_attractor(int samples)
 	}
 
 	write_samples("samples", samples_array, samples);
+	free(samples_array);
 }
 
 static void write_video(const char *params, double *cn, double start, double end, int frames)
