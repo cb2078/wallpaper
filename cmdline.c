@@ -142,7 +142,7 @@ static char *type_str(enum option_type type)
 		case DOUBLE:
 			return "<float>";
 		case ENUM:
-			return  "(BW|WB|HSV|RGB)";
+			return  "(BW|WB|HSV|RGB|MIX)";
 		case STRING:
 			return "<string>";
 	}

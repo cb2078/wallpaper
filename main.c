@@ -1,4 +1,5 @@
 #define _USE_MATH_DEFINES
+#define M_SQRT3 1.73205080756887729352744634151
 
 #include <assert.h>
 #include <float.h>
@@ -15,12 +16,14 @@ enum colour_type {
 	BW,
 	HSV,
 	RGB,
+	MIX,
 };
 
 char *colour_map[] = {
 	[BW] = "BW",
 	[HSV] = "HSV",
 	[RGB] = "RGB",
+	[MIX] = "MIX",
 };
 
 unsigned CUTOFF = 10000;
@@ -39,6 +42,19 @@ static double c[Dn][D];
 static double x_min[D];
 static double x_max[D];
 static double v_max[D];
+static double u[3][D] = {
+	{1, 0},
+	{-1.0 / 2, M_SQRT3 / 2},
+	{-1.0 / 2, -M_SQRT3 / 2},
+};
+
+static double dot(double x[D], double y[D])
+{
+	double s = 0;
+	for (int i = 0; i < D; ++i)
+		s += x[i] * y[i];
+	return s;
+}
 
 static double dst(double x0[D], double x1[D])
 {
@@ -259,39 +275,51 @@ static void render_image(char buf[HEIGHT][WIDTH][3])
 
 		count += info[i][j][0] == 0;
 		info[i][j][0] += 1;
-		if (COLOUR == HSV) {
-			info[i][j][1] += v[1] / v_max[1];
-			info[i][j][2] += v[0] / v_max[0];
-		} else {
-			info[i][j][1] += MAX(0, v[0] / v_max[0]);
-			info[i][j][2] += MAX(0, -v[0] / v_max[0]);
-			info[i][j][3] += fabs(v[1]) / v_max[1];
+		switch (COLOUR) {
+			case HSV:
+				info[i][j][1] += v[1] / v_max[1];
+				info[i][j][2] += v[0] / v_max[0];
+				break;
+			case MIX:
+				for (int k = 0; k < 3; ++k)
+					info[i][j][k + 1] += fabs(dot(u[k], v)) / sqrt(dot(v_max, v_max));
+				break;
+			case RGB:
+				info[i][j][1] += MAX(0, v[0] / v_max[0]);
+				info[i][j][2] += MAX(0, -v[0] / v_max[0]);
+				info[i][j][3] += fabs(v[1]) / v_max[1];
+				break;
+			case BW:
+				break;
 		}
 	}
 	double DENSITY = (double)ITERATIONS / count;
 
 	for (int i = 0; i < HEIGHT; ++i)
 		for (int j = 0; j < WIDTH; ++j) {
-			if (COLOUR == HSV) {
-				double H = 180 + (atan2(info[i][j][1], info[i][j][2]) * 180 / M_PI);
-				double S = 1;
-				double V = MIN(1, INTENSITY / DENSITY * info[i][j][0] / 0xff);
-				double out[3];
-				hsv_to_rgb(H, S, V, out);
-				for (int k = 0; k < 3; ++k)
-					buf[i][j][k] = (char)(srgb(out[k]) * 0xff);
-			} else {
-				if (info[i][j][0])
+			switch (COLOUR) {
+				case HSV:
+				{
+					double h = 180 + (atan2(info[i][j][1], info[i][j][2]) * 180 / M_PI);
+					double s = 1;
+					double v = MIN(1, INTENSITY / DENSITY * info[i][j][0] / 0xff);
+					double tmp[3];
+					hsv_to_rgb(h, s, v, tmp);
+					for (int k = 0; k < 3; ++k)
+						buf[i][j][k] = (char)(0xff * srgb(tmp[k]));
+				} break;
+				default:
 					for (int k = 0; k < 3; ++k) {
 						double a = MIN(0xff, info[i][j][COLOUR == BW ? 0 : k + 1] * INTENSITY / DENSITY);
 						a /= 0xff;
 						a = srgb(a);
 						buf[i][j][k] = (char)(0xff * a);
 					}
+					if (COLOUR == BW)
+						for (int k = 0; k < 3; ++k)
+							buf[i][j][k] = 0xff - buf[i][j][k];
+					break;
 			}
-			if (COLOUR == BW)
-				for (int k = 0; k < 3; ++k)
-					buf[i][j][k] = 0xff - buf[i][j][k];
 		}
 
 	free(info);
