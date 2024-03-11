@@ -197,7 +197,7 @@ static void hsv_to_rgb(double H, double S, double V, double rgb[3])
 		rgb[k] = rgb[k] + m;
 }
 
-static void rgb_to_hsv(double r, double b, double g, double *h, double *s, double *v)
+static void rgb_to_hsv(double r, double g, double b, double *h, double *s, double *v)
 {
 	double x_max = MAX(r, MAX(g, b));
 	double x_min = MIN(r, MIN(g, b));
