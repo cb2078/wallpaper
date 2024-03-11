@@ -38,17 +38,18 @@ unsigned ITERATIONS;
 
 #include "cmdline.c"
 
-static double c[Dn][D];
-static double x_min[D];
-static double x_max[D];
-static double v_max[D];
-static double u[3][D] = {
+typedef double coef[Dn][D];
+typedef double vec[D];
+
+static coef c;
+static vec x_min, x_max, v_max;
+static vec u[3] = {
 	{1, 0},
 	{-1.0 / 2, M_SQRT3 / 2},
 	{-1.0 / 2, -M_SQRT3 / 2},
 };
 
-static double dot(double x[D], double y[D])
+static double dot(vec x, vec y)
 {
 	double s = 0;
 	for (int i = 0; i < D; ++i)
@@ -56,7 +57,7 @@ static double dot(double x[D], double y[D])
 	return s;
 }
 
-static double dst(double x0[D], double x1[D])
+static double dst(vec x0, vec x1)
 {
 	double s = 0;
 	for (int i = 0; i < D; ++i) {
@@ -66,10 +67,10 @@ static double dst(double x0[D], double x1[D])
 	return sqrt(s);
 }
 
-static void iteration(double y[D])
+static void iteration(vec y)
 {
 #ifndef D
-	double z[2];
+	vec z[2];
 	for (int i = 0; i < 2; ++i)
 		z[i] =
 			c[0][i] +
@@ -80,7 +81,7 @@ static void iteration(double y[D])
 			c[5][i] * y[1];
 #else
 #define Y(i) (i < D ? y[i] : 1)
-	double z[D] = {0, 0};
+	vec z = {0, 0};
 	for (int i = 0; i < D; ++i) {
 		int a = 0;
 		for (int j = 0; j < D + 1; ++j)
@@ -96,15 +97,15 @@ static void iteration(double y[D])
 static bool attractor(void)
 {
 	// initialize parameters
-	double x[D] = {0};
-	double xe[D] = {0};	// for lyapunov exponent
+	vec x = {0};
+	vec xe = {0};	// for lyapunov exponent
 	double d0;
 	do {
 		for (int i = 0; i < D; ++i)
 			xe[i] = x[i] + ((double)rand() / RAND_MAX - 0.5) / 1000;
 		d0 = dst(x, xe);
 	} while (d0 <= 0);
-	double v[D];
+	vec v;
 
 	for (int i = 0; i < D; ++i) {
 		x_min[i] = 1e10;
@@ -114,7 +115,7 @@ static bool attractor(void)
 
 	double lyapunov = 0;
 	for (unsigned n = 0; n < CUTOFF * 2; ++n) {
-		double x_last[D];
+		vec x_last;
 		for (int i = 0; i < D; ++i)
 			x_last[i] = x[i];
 
@@ -232,10 +233,10 @@ static void render_image(char buf[HEIGHT][WIDTH][3])
 	memset(buf, 0, sizeof(char) * HEIGHT * WIDTH * 3);
 	double (*info)[WIDTH][4] = calloc(1, sizeof(double) * HEIGHT * WIDTH * 4);
 
-	double x[D] = {0};
+	vec x = {0};
 	for (unsigned n = 0; n < CUTOFF; ++n)
 		iteration(x);
-	double v[D] = {0};
+	vec v = {0};
 
 	double range[2] = {x_max[0] - x_min[0], x_max[1] - x_min[1]};
 	int o = range[0] < range[1];
@@ -246,7 +247,7 @@ static void render_image(char buf[HEIGHT][WIDTH][3])
 #if D == 2 && defined(MANDLEBROT)
 	for (int i = 0; i < HEIGHT; ++i)
 		for (int j = 0; j < WIDTH; ++j) {
-			double x[2];
+			vec x[2];
 			x[!o] = (double)i / HEIGHT * 4 - 2;
 			x[ o] = (double)j / WIDTH * 4 - 2;
 			unsigned n = 0;
@@ -261,7 +262,7 @@ static void render_image(char buf[HEIGHT][WIDTH][3])
 
 	unsigned count = 0;
 	for (unsigned n = CUTOFF; n < ITERATIONS; ++n) {
-		double x_last[D];
+		vec x_last;
 		for (int i = 0; i < D; ++i)
 			x_last[i] = x[i];
 		iteration(x);
