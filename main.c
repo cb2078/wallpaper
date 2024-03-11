@@ -41,8 +41,11 @@ unsigned ITERATIONS;
 typedef double coef[Dn][D];
 typedef double vec[D];
 
-static coef c;
-static vec x_min, x_max, v_max;
+struct config {
+	coef c;
+	vec x_min, x_max, v_max;
+};
+
 static vec u[3] = {
 	{1, 0},
 	{-1.0 / 2, M_SQRT3 / 2},
@@ -67,7 +70,7 @@ static double dst(vec x0, vec x1)
 	return sqrt(s);
 }
 
-static void iteration(vec y)
+static void iteration(coef c, vec y)
 {
 #ifndef D
 	vec z[2];
@@ -94,7 +97,7 @@ static void iteration(vec y)
 }
 
 // find a set of coefficients to generate a strange attractor
-static bool attractor(void)
+static bool attractor(struct config *conf)
 {
 	// initialize parameters
 	vec x = {0};
@@ -108,9 +111,9 @@ static bool attractor(void)
 	vec v;
 
 	for (int i = 0; i < D; ++i) {
-		x_min[i] = 1e10;
-		x_max[i] = -1e10;
-		v_max[i] = 0;
+		conf->x_min[i] = 1e10;
+		conf->x_max[i] = -1e10;
+		conf->v_max[i] = 0;
 	}
 
 	double lyapunov = 0;
@@ -119,8 +122,8 @@ static bool attractor(void)
 		for (int i = 0; i < D; ++i)
 			x_last[i] = x[i];
 
-		iteration(x);
-		iteration(xe);
+		iteration(conf->c, x);
+		iteration(conf->c, xe);
 
 		// converge, diverge
 		for (int i = 0; i < D; ++i)
@@ -129,9 +132,9 @@ static bool attractor(void)
 		if (n > CUTOFF) {
 			for (int i = 0; i < D; ++i) {
 				v[i] = x[i] - x_last[i];
-				x_max[i] = MAX(x_max[i], x[i]);
-				x_min[i] = MIN(x_min[i], x[i]);
-				v_max[i] = MAX(fabs(v[i]), v_max[i]);
+				conf->x_max[i] = MAX(conf->x_max[i], x[i]);
+				conf->x_min[i] = MIN(conf->x_min[i], x[i]);
+				conf->v_max[i] = MAX(fabs(v[i]), conf->v_max[i]);
 			}
 			// lyapunov exponent
 			double d = dst(x, xe);
@@ -141,29 +144,37 @@ static bool attractor(void)
 	return lyapunov / CUTOFF > 5;
 }
 
-static void random_c(void)
+static bool is_valid(coef c)
+{
+	struct config tmp;
+	memcpy(tmp.c, c, sizeof(coef));
+	return attractor(&tmp);
+}
+
+static void random_config(struct config *conf)
 {
 	do {
 		for (int i = 0; i < D; ++i)
 			for (int j = 0; j < Dn; ++j)
-				c[j][i] = (double)rand() / RAND_MAX * 4 - 2;
-	} while (attractor() == false);
+				conf->c[j][i] = (double)rand() / RAND_MAX * 4 - 2;
+	} while (attractor(conf) == false);
 }
 
-static bool set_c(const char buf[256])
+static bool set_config(struct config *conf, const char params[256])
 {
 	bool result = true;
 	for (int i = 0; i < D; ++i)
 		for (int j = 0; j < Dn; ++j)
-			result = result && (bool)sscanf(buf + 7 * (i * Dn + j), "%lf", &c[j][i]);
+			result &= (bool)sscanf(params + 7 * (i * Dn + j), "%lf", &conf->c[j][i]);
+	result &= attractor(conf);
 	return result;
 }
 
-static void str_c(char buf[256])
+static void str_c(coef c, char params[256])
 {
 	for (int i = 0; i < D; ++i)
 		for (int j = 0; j < Dn; ++j)
-			sprintf(buf + 7 * (i * Dn + j), "% 1.3f ", c[j][i]);
+			sprintf(params + 7 * (i * Dn + j), "% 1.3f ", c[j][i]);
 }
 
 static double srgb(double L)
@@ -228,23 +239,23 @@ static void rgb_to_hsv(double r, double g, double b, double *h, double *s, doubl
 	*h = *h < 0 ? 360 + *h : *h;
 }
 
-static void render_image(char buf[HEIGHT][WIDTH][3])
+static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
 {
 	memset(buf, 0, sizeof(char) * HEIGHT * WIDTH * 3);
 	double (*info)[WIDTH][4] = calloc(1, sizeof(double) * HEIGHT * WIDTH * 4);
 
 	vec x = {0};
 	for (unsigned n = 0; n < CUTOFF; ++n)
-		iteration(x);
+		iteration(conf->c, x);
 	vec v = {0};
 
-	double range[2] = {x_max[0] - x_min[0], x_max[1] - x_min[1]};
+	double range[2] = {conf->x_max[0] - conf->x_min[0], conf->x_max[1] - conf->x_min[1]};
 	int o = range[0] < range[1];
-	double x_scale = (WIDTH - 1) / (x_max[o] - x_min[o]);
-	double y_scale = (HEIGHT - 1) / (x_max[!o] - x_min[!o]);
+	double x_scale = (WIDTH - 1) / (conf->x_max[o] - conf->x_min[o]);
+	double y_scale = (HEIGHT - 1) / (conf->x_max[!o] - conf->x_min[!o]);
 	double scale = MIN(x_scale, y_scale) * (1 - BORDER);
 
-#if D == 2 && defined(MANDLEBROT)
+#if 0
 	for (int i = 0; i < HEIGHT; ++i)
 		for (int j = 0; j < WIDTH; ++j) {
 			vec x[2];
@@ -265,12 +276,12 @@ static void render_image(char buf[HEIGHT][WIDTH][3])
 		vec x_last;
 		for (int i = 0; i < D; ++i)
 			x_last[i] = x[i];
-		iteration(x);
+		iteration(conf->c, x);
 		for (int i = 0; i < D; ++i)
 			v[i] = x[i] - x_last[i];
 
-		int i = (int)((HEIGHT - range[!o] * scale) / 2 + (x[!o] - x_min[!o]) * scale);
-		int j = (int)((WIDTH  - range[ o] * scale) / 2 + (x[ o] - x_min[ o]) * scale);
+		int i = (int)((HEIGHT - range[!o] * scale) / 2 + (x[!o] - conf->x_min[!o]) * scale);
+		int j = (int)((WIDTH  - range[ o] * scale) / 2 + (x[ o] - conf->x_min[ o]) * scale);
 		if (i < 0 || i >= HEIGHT) continue;
 		if (j < 0 || j >= WIDTH) continue;
 
@@ -278,17 +289,17 @@ static void render_image(char buf[HEIGHT][WIDTH][3])
 		info[i][j][0] += 1;
 		switch (COLOUR) {
 			case HSV:
-				info[i][j][1] += v[1] / v_max[1];
-				info[i][j][2] += v[0] / v_max[0];
+				info[i][j][1] += v[1] / conf->v_max[1];
+				info[i][j][2] += v[0] / conf->v_max[0];
 				break;
 			case MIX:
 				for (int k = 0; k < 3; ++k)
-					info[i][j][k + 1] += fabs(dot(u[k], v)) / sqrt(dot(v_max, v_max));
+					info[i][j][k + 1] += fabs(dot(u[k], v)) / sqrt(dot(conf->v_max, conf->v_max));
 				break;
 			case RGB:
-				info[i][j][1] += MAX(0, v[0] / v_max[0]);
-				info[i][j][2] += MAX(0, -v[0] / v_max[0]);
-				info[i][j][3] += fabs(v[1]) / v_max[1];
+				info[i][j][1] += MAX(0, v[0] / conf->v_max[0]);
+				info[i][j][2] += MAX(0, -v[0] / conf->v_max[0]);
+				info[i][j][3] += fabs(v[1]) / conf->v_max[1];
 				break;
 			case BW:
 				break;
@@ -336,7 +347,7 @@ static int write_image(char *name, int width, int height, void *buf)
 	return result;
 }
 
-static int write_samples(char name[], char (*params_array)[256], int samples)
+static int write_samples(char name[], struct config *config_array, int samples)
 {
 	int n = (int)ceil(sqrt((double)samples));
 	int w = WIDTH * n;
@@ -349,19 +360,17 @@ static int write_samples(char name[], char (*params_array)[256], int samples)
 	snprintf(txt, 256, "images/%s.txt", name);
 	FILE *f = fopen(txt, "w");
 
-	static char (*tmp)[WIDTH][3] = NULL;
-	if (tmp == NULL)
-		tmp = malloc(sizeof(char) * HEIGHT * WIDTH * 3);
+	char (*tmp)[WIDTH][3] = malloc(sizeof(char) * HEIGHT * WIDTH * 3);
 	for (int s = 0; s < samples; ++s) {
 		printf("%3d/%d\n", 1 + s, samples);
 		int i = s / n;
 		int j = s % n;
 
-		set_c(params_array[s]);
-		fprintf(f, "%s # %d\n", params_array[s], 1 + s);
+		char name[256];
+		str_c(config_array[s].c, name);
+		fprintf(f, "%s # %d\n", name, 1 + s);
 
-		attractor();
-		render_image(tmp);
+		render_image(&config_array[s], tmp);
 		for (int k = 0; k < HEIGHT; ++k)
 			memcpy(&BUF_AT(i * HEIGHT + k, j * WIDTH, 0), &tmp[k][0][0], sizeof(char) * WIDTH * 3);
 	}
@@ -371,90 +380,87 @@ static int write_samples(char name[], char (*params_array)[256], int samples)
 	snprintf(png, 256, "images/%s.png", name);
 	int result = write_image(png, w, h, buf);
 	free(buf);
+	free(tmp);
 	return result;
 }
 
-static void write_attractor(char *name)
+static void write_attractor(char *name, struct config *conf)
 {
-	static char (*buf)[WIDTH][3] = NULL;
-	if (buf == NULL)
-		buf = malloc(sizeof(char) * HEIGHT * WIDTH * 3);
-	attractor();
-	render_image(buf);
+	char (*buf)[WIDTH][3] = malloc(sizeof(char) * HEIGHT * WIDTH * 3);
+	render_image(conf, buf);
 	write_image(name, WIDTH, HEIGHT, buf);
+	free(buf);
 }
 
 static void sample_attractor(int samples)
 {
-	char (*samples_array)[256] = (char (*)[256])malloc(sizeof(char) * samples * 256);
+	struct config *config_array = (struct config *)malloc(sizeof(struct config) * samples);
 
-	for (int s = 0; s < samples; ++s) {
-		random_c();
-		str_c(samples_array[s]);
-	}
+	for (int s = 0; s < samples; ++s)
+		random_config(&config_array[s]);
 
-	write_samples("samples", samples_array, samples);
-	free(samples_array);
+	write_samples("samples", config_array, samples);
+	free(config_array);
 }
 
-static void write_video(const char *params, double *cn, double start, double end, int frames)
+static void write_video(const char *params, int ci, int cj, double start, double end, int frames)
 {
-	set_c(params);
+	struct config conf;
+	set_config(&conf, params);
 	double range = end - start;
 	double dt = range / frames;
-	*cn += start;
+	conf.c[cj][ci] += start;
 
 	for (int frame = 0; frame < frames; ++frame) {
-		attractor();	// TODO I shouldn't be doing this
 		char name[256];
 		snprintf(name, 256, "video/%d.png", frame);
 		printf("%3d%%\t", frame * 100 / frames);
-		write_attractor(name);
-		*cn += dt;
+		write_attractor(name, &conf);
+		conf.c[cj][ci] += dt;
 	}
 }
 
-static void video_preview(const char *params, double *cn, double start, double end, int samples)
+static void video_preview(const char *params, int ci, int cj, double start, double end, int samples)
 {
-	char (*samples_array)[256] = (char (*)[256])malloc(sizeof(char) * samples * 256);
-	set_c(params);
+	struct config *config_array = (struct config *)malloc(sizeof(struct config) * samples);
+
+	set_config(&config_array[0], params);
 	double range = end - start;
 	double dt = range / (double)samples;
-	*cn += start;
-
-	for (int s = 0; s < samples; ++s) {
-		str_c(samples_array[s]);
-		*cn += dt;
+	config_array[0].c[cj][ci] += start;
+	for (int s = 1; s < samples; ++s) {
+		memcpy(&config_array[s], &config_array[0], sizeof(struct config));
+		config_array[s].c[cj][ci] += dt * s;
 	}
 
-	write_samples("preview", samples_array, samples);
+	write_samples("preview", config_array, samples);
+	free(config_array);
 }
 
-static void video_params(double **cn, double *start, double *end)
+static void video_params(coef c, int *ci, int *cj, double *start, double *end)
 {
-	int i = D * rand() / RAND_MAX;
-	int j = Dn * rand() / RAND_MAX;
-	*cn = &c[j][i];
+	*ci = D * rand() / RAND_MAX;
+	*cj = Dn * rand() / RAND_MAX;
 
-	static double step = 1e-2;
-	double tmp = c[j][i];
-	double dt = 0;
+	static const double step = 1e-2;
+	double tmp = c[*cj][*ci];
 	if (start) {
+		double dt = 0;
 		do {
 			dt += step;
-			c[j][i] = tmp - dt;
-		} while (attractor());
+			c[*cj][*ci] = tmp - dt;
+		} while (is_valid(c));
 		*start = -dt;
+		c[*cj][*ci] = tmp;
 	}
-
 	if (end) {
-		c[j][i] = tmp;
-		dt = 0;
+		double dt = 0;
 		do {
 			dt += step;
-			c[j][i] = tmp + dt;
-		} while (attractor());
+			c[*cj][*ci] = tmp + dt;
+		} while (is_valid(c));
 		*end = dt;
+		c[*cj][*ci] = tmp;
 	}
 }
 
@@ -502,7 +508,8 @@ int main(int argc, char **argv)
 				}
 				char buf[256];
 				for (int i = 0; fgets(buf, 256, f); ++i) {
-					int result = set_c(buf);
+					struct config conf;
+					int result = set_config(&conf, buf);
 					if (!result) {
 						fprintf(stderr, "parse error when reading \"%s\", line %d:\n", PARAMS, i);
 						fprintf(stderr, "%s", buf);
@@ -511,25 +518,27 @@ int main(int argc, char **argv)
 					}
 					char name[256];
 					snprintf(name, 256, "images/%d.png", i);
-					write_attractor(name);
+					write_attractor(name, &conf);
 				}
 			} else {;
-				random_c();
+				struct config conf;
+				random_config(&conf);
 				char buf[256];
-				str_c(buf);
+				str_c(conf.c, buf);
 				char name[256];
 				snprintf(name, 256, "images/single.png");
-				write_attractor(name);
+				write_attractor(name, &conf);
 			}
 			break;
 		case VIDEO:
 			if (SAMPLES > 0) {
-				double *cn;
-				video_params(&cn, is_set(OP_START) ? NULL : &START, is_set(OP_END) ? NULL : &END);
-				random_c();
-				char buf[256];
-				str_c(buf);
-				video_preview(buf, cn, START, END, SAMPLES);
+				struct config conf;
+				random_config(&conf);
+				int ci, cj;
+				video_params(conf.c, &ci, &cj, is_set(OP_START) ? NULL : &START, is_set(OP_END) ? NULL : &END);
+				char params[256];
+				str_c(conf.c, params);
+				video_preview(params, ci, cj, START, END, SAMPLES);
 			} else {
 				fprintf(stderr, "video rendering not supported\n");
 				exit(1);
