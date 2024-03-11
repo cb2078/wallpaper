@@ -14,7 +14,27 @@
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <intrin.h>
+#define thread_count 3 // TODO 1 less then system
+
+struct work_queue_info {
+	volatile int next_entry;
+	volatile int entry_count;
+};
+
+static void run_jobs(DWORD WINAPI (*callback)(void *), void *arg)
+{
+	// create threads
+	HANDLE threads[thread_count];
+	for (int i = 0; i < thread_count; ++i)
+		threads[i] = CreateThread(0, 0, callback, arg, 0, 0);
+
+	// wait for the work to be done
+	WaitForMultipleObjects(thread_count, threads, true, INFINITE);
+
+	// close the thread handless
+	for (int i = 0; i < thread_count; ++i)
+		CloseHandle(threads[i]);
+}
 
 enum colour_type {
 	BW,
@@ -351,40 +371,69 @@ static int write_image(char *name, int width, int height, void *buf)
 	return result;
 }
 
+struct write_samples_arg {
+	struct work_queue_info thread_info;
+	struct config *config_array;
+	int n;
+	int w, h;
+	char *buf;
+};
+
+static DWORD WINAPI write_samples_callback(void *arg_)
+{
+	struct write_samples_arg *arg = (struct write_samples_arg *)arg_;
+	char (*img)[WIDTH][3] = malloc(sizeof(char) * HEIGHT * WIDTH * 3);
+#define BUF_AT(i, j, k) arg->buf[(i) * arg->w * 3 + (j) * 3 + (k)]
+
+	while (arg->thread_info.next_entry < arg->thread_info.entry_count) {
+		int s = InterlockedIncrement((long *)&arg->thread_info.next_entry) - 1;
+		if (s >= arg->thread_info.next_entry)
+			break;
+
+		int i = s / arg->n;
+		int j = s % arg->n;
+		render_image(&arg->config_array[s], img);
+		for (int k = 0; k < HEIGHT; ++k)
+			memcpy(&BUF_AT(i * HEIGHT + k, j * WIDTH, 0), &img[k][0][0], sizeof(char) * WIDTH * 3);
+		printf("%3d\n", 1 + s);
+	}
+
+	free(img);
+	return 0;
+}
+
 static int write_samples(char name[], struct config *config_array, int samples)
 {
 	int n = (int)ceil(sqrt((double)samples));
 	int w = WIDTH * n;
 	int h = HEIGHT * n;
 	char *buf = (char *)malloc(sizeof(char) * w * h * 3);
-#define BUF_AT(i, j, k) buf[(i) * w * 3 + (j) * 3 + (k)]
 	memset(buf, 0x7f, sizeof(char) * w * h * 3);
 
 	char txt[256];
 	snprintf(txt, 256, "images/%s.txt", name);
 	FILE *f = fopen(txt, "w");
-
-	char (*tmp)[WIDTH][3] = malloc(sizeof(char) * HEIGHT * WIDTH * 3);
+	// TODO do this in the thread function
 	for (int s = 0; s < samples; ++s) {
-		printf("%3d/%d\n", 1 + s, samples);
-		int i = s / n;
-		int j = s % n;
-
 		char name[256];
 		str_c(config_array[s].c, name);
 		fprintf(f, "%s # %d\n", name, 1 + s);
-
-		render_image(&config_array[s], tmp);
-		for (int k = 0; k < HEIGHT; ++k)
-			memcpy(&BUF_AT(i * HEIGHT + k, j * WIDTH, 0), &tmp[k][0][0], sizeof(char) * WIDTH * 3);
 	}
 	fclose(f);
+
+	struct write_samples_arg arg = {0};
+	arg.thread_info.entry_count = samples;
+	arg.config_array = config_array;
+	arg.n = n;
+	arg.w = w;
+	arg.h = h;
+	arg.buf = buf;
+	run_jobs(write_samples_callback, (void *)&arg);
 
 	char png[256];
 	snprintf(png, 256, "images/%s.png", name);
 	int result = write_image(png, w, h, buf);
 	free(buf);
-	free(tmp);
 	return result;
 }
 
