@@ -20,10 +20,10 @@ enum option_name {
 };
 
 enum option_type {
-	INT,
-	DOUBLE,
-	ENUM,
-	STRING,
+	TY_INT,
+	TY_DOUBLE,
+	TY_ENUM,
+	TY_STRING,
 };
 
 struct option {
@@ -44,24 +44,24 @@ struct option {
 struct option options[] = {
 	[OP_BORDER] = {
 		.str = "border",
-		.type = DOUBLE,
+		.type = TY_DOUBLE,
 		.val.f = 0.05f,
 	},
 	[OP_COEFFICIENT] = {
 		.str = "coefficient",
 		.mode = VIDEO,
-		.type = STRING,
+		.type = TY_STRING,
 		.doc = "coefficient to change during the video, must have regex \"[xy][0-5]\"",
 	},
 	[OP_COLOUR] = {
 		.str = "colour",
-		.type = ENUM,
+		.type = TY_ENUM,
 		.doc = "how to colour the attractor",
 	},
 	[OP_DURATION] = {
 		.str = "duration",
 		.mode = VIDEO,
-		.type = INT,
+		.type = TY_INT,
 		.val.d = 40,
 		.doc = "duration in seconds",
 		.conflicts = OP_PREVIEW,
@@ -69,53 +69,53 @@ struct option options[] = {
 	[OP_END] = {
 		.str = "end",
 		.mode = VIDEO,
-		.type = DOUBLE,
+		.type = TY_DOUBLE,
 		.doc = "end value for coefficient",
 	},
 	[OP_FPS] = {
 		.str = "fps",
 		.mode = VIDEO,
-		.type = INT,
+		.type = TY_INT,
 		.val.d = 24,
 		.conflicts = OP_PREVIEW,
 	},
 	[OP_HEIGHT] = {
 		.str = "height",
-		.type = INT,
+		.type = TY_INT,
 		.val.d = 720,
 	},
 	[OP_INTENSITY] = {
 		.str = "intensity",
-		.type = DOUBLE,
+		.type = TY_DOUBLE,
 		.val.f = 50,
 		.doc = "how bright the iterations make each pixel",
 	},
 	[OP_PARAMS] = {
 		.str = "params",
-		.type = STRING,
+		.type = TY_STRING,
 		.doc = "file containing lines of 12 space separated floats",
 		.conflicts = OP_PREVIEW,
 	},
 	[OP_PREVIEW] = {
 		.str = "preview",
-		.type = INT,
+		.type = TY_INT,
 		.doc = "show grid of some thumbnails",
 	},
 	[OP_QUALITY] = {
 		.str = "quality",
-		.type = INT,
+		.type = TY_INT,
 		.val.d = 25,
 		.doc = "how many iterations to do per pixel",
 	},
 	[OP_START] = {
 		.str = "start",
 		.mode = VIDEO,
-		.type = DOUBLE,
+		.type = TY_DOUBLE,
 		.doc = "start value for coefficient",
 	},
 	[OP_WIDTH] = {
 		.str = "width",
-		.type = INT,
+		.type = TY_INT,
 		.val.d = 1280,
 	},
 };
@@ -137,13 +137,13 @@ int CI, CJ;
 static char *type_str(enum option_type type)
 {
 	switch (type) {
-		case INT:
+		case TY_INT:
 			return "<int>";
-		case DOUBLE:
+		case TY_DOUBLE:
 			return "<float>";
-		case ENUM:
+		case TY_ENUM:
 			return  "(BW|WB|HSV|RGB|MIX)";
-		case STRING:
+		case TY_STRING:
 			return "<string>";
 	}
 }
@@ -176,13 +176,13 @@ static bool has_doc(struct option *o)
 static bool has_default(struct option *o)
 {
 	switch (o->type) {
-		case INT:
+		case TY_INT:
 			return 0 != o->val.d;
-		case DOUBLE:
+		case TY_DOUBLE:
 			return 0 != o->val.f;
-		case ENUM:
+		case TY_ENUM:
 			return true;
-		case STRING:
+		case TY_STRING:
 			return NULL != o->val.s;
 	}
 	exit(1);
@@ -191,16 +191,16 @@ static bool has_default(struct option *o)
 static void val_str(struct option *o, char buf[256])
 {
 	switch (o->type) {
-		case INT:
+		case TY_INT:
 			snprintf(buf, 256, "%d", o->val.d);
 			return;
-		case DOUBLE:
+		case TY_DOUBLE:
 			snprintf(buf, 256, "%.2f", o->val.f);
 			return;
-		case ENUM:
+		case TY_ENUM:
 			strncpy(buf, colour_map[o->val.c], 256);
 			return;
-		case STRING:
+		case TY_STRING:
 			snprintf(buf, 256, "%s", o->val.s);
 			return;
 	}
@@ -282,14 +282,14 @@ static void parse_option(int mode, char *flag, char *val)
 
 		char *format = NULL;
 		switch (options[o].type) {
-			case INT:
+			case TY_INT:
 				format = "%d";
 				break;
-			case DOUBLE:
+			case TY_DOUBLE:
 				format = "%lf";
 				break;
-			case ENUM:
-			case STRING:
+			case TY_ENUM:
+			case TY_STRING:
 				break;
 		}
 		// set the option
