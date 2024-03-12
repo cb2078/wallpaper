@@ -491,19 +491,18 @@ static void sample_attractor(int samples)
 
 static void write_video(const char *params, int ci, int cj, double start, double end, int frames)
 {
-	struct config conf;
-	set_config(&conf, params);
 	double range = end - start;
 	double dt = range / frames;
-	conf.c[cj][ci] += start;
 
-	for (int frame = 0; frame < frames; ++frame) {
-		char name[256];
-		snprintf(name, 256, "video/%d.png", frame);
-		printf("%3d%%\t", frame * 100 / frames);
-		write_attractor(name, &conf);
-		conf.c[cj][ci] += dt;
+	struct config config_array[frames];
+	set_config(&config_array[0], params);
+	config_array[0].c[cj][ci] += start;
+	for (int i = 1; i < frames; ++i) {
+		memcpy(&config_array[i], &config_array[0], sizeof(struct config));
+		config_array[i].c[cj][ci] += dt * i;
 	}
+
+	write_attractors(config_array, frames);
 }
 
 static void video_preview(const char *params, int ci, int cj, double start, double end, int samples)
