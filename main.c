@@ -14,7 +14,8 @@
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#define thread_count 3 // TODO 1 less then system
+
+unsigned THREAD_COUNT;
 
 struct work_queue_info {
 	volatile int next_entry;
@@ -24,15 +25,15 @@ struct work_queue_info {
 static void run_jobs(DWORD WINAPI (*callback)(void *), void *arg)
 {
 	// create threads
-	HANDLE threads[thread_count];
-	for (int i = 0; i < thread_count; ++i)
+	HANDLE threads[THREAD_COUNT];
+	for (int i = 0; i < THREAD_COUNT; ++i)
 		threads[i] = CreateThread(0, 0, callback, arg, 0, 0);
 
 	// wait for the work to be done
-	WaitForMultipleObjects(thread_count, threads, true, INFINITE);
+	WaitForMultipleObjects(THREAD_COUNT, threads, true, INFINITE);
 
 	// close the thread handless
-	for (int i = 0; i < thread_count; ++i)
+	for (int i = 0; i < THREAD_COUNT; ++i)
 		CloseHandle(threads[i]);
 }
 
@@ -570,6 +571,13 @@ static void video_params(coef c)
 int main(int argc, char **argv)
 {
 	srand(time(NULL));
+
+	// thread count
+	{
+		SYSTEM_INFO sysinfo;
+		GetSystemInfo(&sysinfo);
+		THREAD_COUNT = sysinfo.dwNumberOfProcessors - 1;
+	}
 
 	// print help if no args
 	if (argc <= 1) {
