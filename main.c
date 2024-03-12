@@ -489,63 +489,68 @@ static void sample_attractor(int samples)
 	free(config_array);
 }
 
-static void write_video(const char *params, int ci, int cj, double start, double end, int frames)
+static void write_video(const char *params, int frames)
 {
-	double range = end - start;
+	double range = END - START;
 	double dt = range / frames;
 
 	struct config config_array[frames];
 	set_config(&config_array[0], params);
-	config_array[0].c[cj][ci] += start;
+	config_array[0].c[CJ][CI] += START;
 	for (int i = 1; i < frames; ++i) {
 		memcpy(&config_array[i], &config_array[0], sizeof(struct config));
-		config_array[i].c[cj][ci] += dt * i;
+		config_array[i].c[CJ][CI] += dt * i;
 	}
 
 	write_attractors(config_array, frames);
 }
 
-static void video_preview(const char *params, int ci, int cj, double start, double end, int samples)
+static void video_preview(const char *params, int samples)
 {
 	struct config *config_array = (struct config *)malloc(sizeof(struct config) * samples);
 
 	set_config(&config_array[0], params);
-	double range = end - start;
+	double range = END - START;
 	double dt = range / (double)samples;
-	config_array[0].c[cj][ci] += start;
+	config_array[0].c[CJ][CI] += START;
 	for (int s = 1; s < samples; ++s) {
 		memcpy(&config_array[s], &config_array[0], sizeof(struct config));
-		config_array[s].c[cj][ci] += dt * s;
+		config_array[s].c[CJ][CI] += dt * s;
 	}
 
 	write_samples("preview", config_array, samples);
 	free(config_array);
 }
 
-static void video_params(coef c, int *ci, int *cj, double *start, double *end)
+static void video_params(coef c)
 {
-	*ci = D * rand() / RAND_MAX;
-	*cj = Dn * rand() / RAND_MAX;
+	if (!is_set(OP_COEFFICIENT)) {
+		set(OP_COEFFICIENT);
+		CI = D * rand() / RAND_MAX;
+		CJ = Dn * rand() / RAND_MAX;
+	}
 
 	static const double step = 1e-2;
-	double tmp = c[*cj][*ci];
-	if (start) {
+	double tmp = c[CJ][CI];
+	if (!is_set(OP_START)) {
+		set(OP_START);
 		double dt = 0;
 		do {
 			dt += step;
-			c[*cj][*ci] = tmp - dt;
+			c[CJ][CI] = tmp - dt;
 		} while (is_valid(c));
-		*start = -dt;
-		c[*cj][*ci] = tmp;
+		START = -dt;
+		c[CJ][CI] = tmp;
 	}
-	if (end) {
+	if (!is_set(OP_END)) {
+		set(OP_END);
 		double dt = 0;
 		do {
 			dt += step;
-			c[*cj][*ci] = tmp + dt;
+			c[CJ][CI] = tmp + dt;
 		} while (is_valid(c));
-		*end = dt;
-		c[*cj][*ci] = tmp;
+		END = dt;
+		c[CJ][CI] = tmp;
 	}
 }
 
@@ -642,14 +647,13 @@ int main(int argc, char **argv)
 				random_config(&conf);
 			}
 
-			int ci, cj;
-			video_params(conf.c, &ci, &cj, is_set(OP_START) ? NULL : &START, is_set(OP_END) ? NULL : &END);
+			video_params(conf.c);
 			char params[256];
 			str_c(conf.c, params);
 			if (SAMPLES)
-				video_preview(params, ci, cj, START, END, SAMPLES);
+				video_preview(params, SAMPLES);
 			else
-				write_video(params, ci, cj, START, END, DURATION * FPS);
+				write_video(params, DURATION * FPS);
 			break;
 	}
 }

@@ -24,6 +24,7 @@ enum option_type {
 	TY_DOUBLE,
 	TY_ENUM,
 	TY_STRING,
+	TY_COEFFICIENT,
 };
 
 struct option {
@@ -50,8 +51,8 @@ struct option options[] = {
 	[OP_COEFFICIENT] = {
 		.str = "coefficient",
 		.mode = VIDEO,
-		.type = TY_STRING,
-		.doc = "coefficient to change during the video, must have regex \"[xy][0-5]\"",
+		.type = TY_COEFFICIENT,
+		.doc = "coefficient to change during the video, must have regex \"[xy]\\d\"",
 	},
 	[OP_COLOUR] = {
 		.str = "colour",
@@ -144,6 +145,7 @@ static char *type_str(enum option_type type)
 		case TY_ENUM:
 			return  "(BW|WB|HSV|RGB|MIX)";
 		case TY_STRING:
+		case TY_COEFFICIENT:
 			return "<string>";
 	}
 }
@@ -184,6 +186,8 @@ static bool has_default(struct option *o)
 			return true;
 		case TY_STRING:
 			return NULL != o->val.s;
+		case TY_COEFFICIENT:
+			return false;
 	}
 	exit(1);
 }
@@ -195,13 +199,16 @@ static void val_str(struct option *o, char buf[256])
 			snprintf(buf, 256, "%d", o->val.d);
 			return;
 		case TY_DOUBLE:
-			snprintf(buf, 256, "%.2f", o->val.f);
+			snprintf(buf, 256, "%.3f", o->val.f);
 			return;
 		case TY_ENUM:
 			strncpy(buf, colour_map[o->val.c], 256);
 			return;
 		case TY_STRING:
 			snprintf(buf, 256, "%s", o->val.s);
+			return;
+		case TY_COEFFICIENT:
+			snprintf(buf, 256, "%c%d", "xyz"[CI], CJ);
 			return;
 	}
 	exit(1);
@@ -288,6 +295,7 @@ static void parse_option(int mode, char *flag, char *val)
 			case TY_DOUBLE:
 				format = "%lf";
 				break;
+			case TY_COEFFICIENT:
 			case TY_ENUM:
 			case TY_STRING:
 				break;
@@ -327,8 +335,8 @@ static void parse_option(int mode, char *flag, char *val)
 				char c;
 				int d;
 				int result = sscanf(val, "%c%d", &c, &d);
-				if (result < 2 || (c != 'x' && c != 'y') || (d < 0 || d >= 6))
-					option_error(flag, "regex [xy][0-5]", val);
+				if (result < 2 || (c != 'x' && c != 'y'))
+					option_error(flag, "regex [xy]\\d", val);
 				CI = c == 'x' ? 0 : 1;
 				CJ = d;
 			} break;
@@ -354,6 +362,11 @@ static void print_values(int mode)
 		printf(" --%s %s", options[i].str, buf);
 	}
 	putchar('\n');
+}
+
+static void set(enum option_name o)
+{
+	options[o].set = true;
 }
 
 static bool is_set(enum option_name o)
