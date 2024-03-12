@@ -621,18 +621,35 @@ int main(int argc, char **argv)
 			}
 			break;
 		case VIDEO:
-			if (SAMPLES > 0) {
-				struct config conf;
-				random_config(&conf);
-				int ci, cj;
-				video_params(conf.c, &ci, &cj, is_set(OP_START) ? NULL : &START, is_set(OP_END) ? NULL : &END);
-				char params[256];
-				str_c(conf.c, params);
-				video_preview(params, ci, cj, START, END, SAMPLES);
+			struct config conf;
+			if (PARAMS) {
+				FILE *f = fopen(PARAMS, "r");
+				if (f == NULL) {
+					fprintf(stderr, "option error: --params could not open \"%s\"\n", PARAMS);
+					exit(1);
+				}
+
+				char buf[256];
+				fgets(buf, 256, f);
+				int result = set_config(&conf, buf);
+				if (!result) {
+					fprintf(stderr, "parse error when reading \"%s\", line %d:\n", PARAMS, 0);
+					fprintf(stderr, "%s", buf);
+					fprintf(stderr, "%s should be a %s\n", PARAMS, options[OP_PARAMS].doc);
+					exit(1);
+				}
 			} else {
-				fprintf(stderr, "video rendering not supported\n");
-				exit(1);
+				random_config(&conf);
 			}
+
+			int ci, cj;
+			video_params(conf.c, &ci, &cj, is_set(OP_START) ? NULL : &START, is_set(OP_END) ? NULL : &END);
+			char params[256];
+			str_c(conf.c, params);
+			if (SAMPLES)
+				video_preview(params, ci, cj, START, END, SAMPLES);
+			else
+				write_video(params, ci, cj, START, END, DURATION * FPS);
 			break;
 	}
 }
