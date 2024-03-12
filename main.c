@@ -190,7 +190,7 @@ static bool set_config(struct config *conf, const char params[256])
 	for (int i = 0; i < D; ++i)
 		for (int j = 0; j < Dn; ++j)
 			result &= (bool)sscanf(params + 7 * (i * Dn + j), "%lf", &conf->c[j][i]);
-	result &= attractor(conf);
+	attractor(conf);
 	return result;
 }
 
@@ -445,6 +445,39 @@ static void write_attractor(char *name, struct config *conf)
 	free(buf);
 }
 
+struct write_attractors_arg {
+	struct work_queue_info thread_info;
+	struct config *config_array;
+};
+
+static DWORD WINAPI write_attractors_callback(void *arg_)
+{
+	struct write_attractors_arg *arg = (struct write_attractors_arg *)arg_;
+	char (*buf)[WIDTH][3] = malloc(sizeof(char) * HEIGHT * WIDTH * 3);
+
+	while (arg->thread_info.next_entry < arg->thread_info.entry_count) {
+		int s = InterlockedIncrement((long *)&arg->thread_info.next_entry) - 1;
+		if (s >= arg->thread_info.next_entry)
+			break;
+
+		char name[256];
+		snprintf(name, 256, "images/%d.png", s);
+		render_image(&arg->config_array[s], buf);
+		write_image(name, WIDTH, HEIGHT, buf);
+	}
+
+	free(buf);
+	return 0;
+}
+
+static void write_attractors(struct config *config_array, int count)
+{
+	struct write_attractors_arg arg = {0};
+	arg.thread_info.entry_count = count;
+	arg.config_array = config_array;
+	run_jobs(write_attractors_callback, (void *)&arg);
+}
+
 static void sample_attractor(int samples)
 {
 	struct config *config_array = (struct config *)malloc(sizeof(struct config) * samples);
@@ -559,21 +592,26 @@ int main(int argc, char **argv)
 					fprintf(stderr, "option error: --params could not open \"%s\"\n", PARAMS);
 					exit(1);
 				}
+
+				int count = 0;
+				while (!feof(f))
+					count += fgetc(f) == '\n';
+				rewind(f);
+
+				struct config config_array[count];
 				char buf[256];
 				for (int i = 0; fgets(buf, 256, f); ++i) {
-					struct config conf;
-					int result = set_config(&conf, buf);
+					int result = set_config(&config_array[i], buf);
 					if (!result) {
 						fprintf(stderr, "parse error when reading \"%s\", line %d:\n", PARAMS, i);
 						fprintf(stderr, "%s", buf);
 						fprintf(stderr, "%s should be a %s\n", PARAMS, options[OP_PARAMS].doc);
 						exit(1);
 					}
-					char name[256];
-					snprintf(name, 256, "images/%d.png", i);
-					write_attractor(name, &conf);
 				}
-			} else {;
+
+				write_attractors(config_array, count);
+			} else {
 				struct config conf;
 				random_config(&conf);
 				char buf[256];
