@@ -583,9 +583,6 @@ int main(int argc, char **argv)
 	}
 	ITERATIONS = WIDTH * HEIGHT * QUALITY;
 
-	// print the configuration
-	print_values(mode);
-
 	switch (mode) {
 		case IMAGE:
 			if (SAMPLES) {
@@ -656,4 +653,7 @@ int main(int argc, char **argv)
 				write_video(params, DURATION * FPS);
 			break;
 	}
+
+	// print the final configuration
+	print_values(mode);
 }

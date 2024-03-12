@@ -351,7 +351,7 @@ static void parse_option(int mode, char *flag, char *val)
 
 static void print_values(int mode)
 {
-	printf("using options");
+	printf("made with");
 	for (int i = 0; i < LENGTH(options); ++i) {
 		if (!options[i].set && !has_default(&options[i]))
 			continue;
