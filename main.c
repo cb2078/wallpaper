@@ -57,7 +57,7 @@ unsigned ITERATIONS;
 #define MAX(x, y)	((x) > (y) ? (x) : (y))
 #define MIN(x, y)	((x) < (y) ? (x) : (y))
 #define LENGTH(a)	(sizeof(a) / sizeof(a[0]))
-#define D 3
+#define D 2
 #define Dn ((D + 1) * (D + 2) / 2)
 
 #include "cmdline.c"
@@ -489,37 +489,50 @@ static void sample_attractor(int samples)
 	free(config_array);
 }
 
-static void write_video(const char *params, int frames)
+static void set_video_params(const char *params, struct config *config_array, int frames)
 {
 	double range = END - START;
 	double dt = range / frames;
 
-	struct config config_array[frames];
+	vec x_max;
+	vec x_min;
+	for (int i = 0; i < D; ++i) {
+		x_min[i] = 1e10;
+		x_max[i] = -1e10;
+	}
+
 	set_config(&config_array[0], params);
 	config_array[0].c[CJ][CI] += START;
 	for (int i = 1; i < frames; ++i) {
 		memcpy(&config_array[i], &config_array[0], sizeof(struct config));
 		config_array[i].c[CJ][CI] += dt * i;
+		attractor(&config_array[i]);
+
+		for (int j = 0; j < D; ++j) {
+			x_max[j] = MAX(x_max[j], config_array[i].x_max[j]);
+			x_min[j] = MIN(x_min[j], config_array[i].x_min[j]);
+		}
 	}
 
+	for (int i = 0; i < frames; ++i)
+		for (int j = 0; j < D; ++j) {
+			config_array[i].x_max[j] = x_max[j];
+			config_array[i].x_min[j] = x_min[j];
+		}
+}
+
+static void write_video(const char *params, int frames)
+{
+	struct config config_array[frames];
+	set_video_params(params, config_array, frames);
 	write_attractors(config_array, frames);
 }
 
 static void video_preview(const char *params, int samples)
 {
-	struct config *config_array = (struct config *)malloc(sizeof(struct config) * samples);
-
-	set_config(&config_array[0], params);
-	double range = END - START;
-	double dt = range / (double)samples;
-	config_array[0].c[CJ][CI] += START;
-	for (int s = 1; s < samples; ++s) {
-		memcpy(&config_array[s], &config_array[0], sizeof(struct config));
-		config_array[s].c[CJ][CI] += dt * s;
-	}
-
+	struct config config_array[samples];
+	set_video_params(params, config_array, samples);
 	write_samples("preview", config_array, samples);
-	free(config_array);
 }
 
 static void video_params(coef c)
