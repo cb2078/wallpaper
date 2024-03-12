@@ -126,13 +126,8 @@ static bool attractor(struct config *conf)
 {
 	// initialize parameters
 	vec x = {0};
-	vec xe = {0};	// for lyapunov exponent
-	double d0;
-	do {
-		for (int i = 0; i < D; ++i)
-			xe[i] = x[i] + ((double)rand() / RAND_MAX - 0.5) / 1000;
-		d0 = dst(x, xe);
-	} while (d0 <= 0);
+	vec xe = {1e-3};	// for lyapunov exponent
+	double d0 = dst(x, xe);
 	vec v;
 
 	for (int i = 0; i < D; ++i) {
