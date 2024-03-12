@@ -535,8 +535,8 @@ static void video_params(coef c)
 {
 	if (!is_set(OP_COEFFICIENT)) {
 		set(OP_COEFFICIENT);
-		CI = D * rand() / RAND_MAX;
-		CJ = Dn * rand() / RAND_MAX;
+		CI = rand() % D;
+		CJ = rand() % Dn;
 	}
 
 	static const double step = 1e-2;
