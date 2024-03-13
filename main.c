@@ -588,6 +588,11 @@ static void write_video(const char *params, int frames)
 	run_jobs(write_video_callback, (void *)&arg);
 
 	_pclose(pipe);
+
+	// write a thumbnail
+	struct config conf;
+	set_config(&conf, params);
+	write_attractor("images/out.png", &conf);
 }
 
 static void video_params(coef c)
