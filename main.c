@@ -61,13 +61,11 @@ unsigned ITERATIONS;
 #define MAX(x, y)	((x) > (y) ? (x) : (y))
 #define MIN(x, y)	((x) < (y) ? (x) : (y))
 #define LENGTH(a)	(sizeof(a) / sizeof(a[0]))
-#define D 2
-#define Dn ((D + 1) * (D + 2) / 2)
 
 #include "cmdline.c"
 
-typedef double coef[Dn][D];
-typedef double vec[D];
+typedef double coef[6][2];
+typedef double vec[2];
 
 struct config {
 	coef c;
@@ -83,7 +81,7 @@ static vec u[3] = {
 static double dot(vec x, vec y)
 {
 	double s = 0;
-	for (int i = 0; i < D; ++i)
+	for (int i = 0; i < 2; ++i)
 		s += x[i] * y[i];
 	return s;
 }
@@ -91,7 +89,7 @@ static double dot(vec x, vec y)
 static double dst(vec x0, vec x1)
 {
 	double s = 0;
-	for (int i = 0; i < D; ++i) {
+	for (int i = 0; i < 2; ++i) {
 		double d = x1[i] - x0[i];
 		s += d * d;
 	}
@@ -100,8 +98,8 @@ static double dst(vec x0, vec x1)
 
 static void iteration(coef c, vec y)
 {
-#ifndef D
-	vec z[2];
+#if 0
+	vec z;
 	for (int i = 0; i < 2; ++i)
 		z[i] =
 			c[0][i] +
@@ -111,16 +109,16 @@ static void iteration(coef c, vec y)
 			c[4][i] * y[1] * y[1] +
 			c[5][i] * y[1];
 #else
-#define Y(i) (i < D ? y[i] : 1)
+#define Y(i) (i < 2 ? y[i] : 1)
 	vec z = {0, 0};
-	for (int i = 0; i < D; ++i) {
+	for (int i = 0; i < 2; ++i) {
 		int a = 0;
-		for (int j = 0; j < D + 1; ++j)
-			for (int k = j; k < D + 1; ++k)
+		for (int j = 0; j < 2 + 1; ++j)
+			for (int k = j; k < 2 + 1; ++k)
 				z[i] += c[a++][i] * Y(j) * Y(k);
 	}
 #endif
-	for (int i = 0; i < D; ++i)
+	for (int i = 0; i < 2; ++i)
 		y[i] = z[i];
 }
 
@@ -133,7 +131,7 @@ static bool attractor(struct config *conf)
 	double d0 = dst(x, xe);
 	vec v;
 
-	for (int i = 0; i < D; ++i) {
+	for (int i = 0; i < 2; ++i) {
 		conf->x_min[i] = 1e10;
 		conf->x_max[i] = -1e10;
 		conf->v_max[i] = 0;
@@ -142,18 +140,18 @@ static bool attractor(struct config *conf)
 	double lyapunov = 0;
 	for (unsigned n = 0; n < CUTOFF * 2; ++n) {
 		vec x_last;
-		for (int i = 0; i < D; ++i)
+		for (int i = 0; i < 2; ++i)
 			x_last[i] = x[i];
 
 		iteration(conf->c, x);
 		iteration(conf->c, xe);
 
 		// converge, diverge
-		for (int i = 0; i < D; ++i)
+		for (int i = 0; i < 2; ++i)
 			if (fabs(x[i]) > 1e10 || fabs(x[i]) < 1e-10)
 				return false;
 		if (n > CUTOFF) {
-			for (int i = 0; i < D; ++i) {
+			for (int i = 0; i < 2; ++i) {
 				v[i] = x[i] - x_last[i];
 				conf->x_max[i] = MAX(conf->x_max[i], x[i]);
 				conf->x_min[i] = MIN(conf->x_min[i], x[i]);
@@ -177,8 +175,8 @@ static bool is_valid(coef c)
 static void random_config(struct config *conf)
 {
 	do {
-		for (int i = 0; i < D; ++i)
-			for (int j = 0; j < Dn; ++j)
+		for (int i = 0; i < 2; ++i)
+			for (int j = 0; j < 6; ++j)
 				conf->c[j][i] = (double)rand() / RAND_MAX * 4 - 2;
 	} while (attractor(conf) == false);
 }
@@ -186,18 +184,18 @@ static void random_config(struct config *conf)
 static bool set_config(struct config *conf, const char params[256])
 {
 	bool result = true;
-	for (int i = 0; i < D; ++i)
-		for (int j = 0; j < Dn; ++j)
-			result &= (bool)sscanf(params + 7 * (i * Dn + j), "%lf", &conf->c[j][i]);
+	for (int i = 0; i < 2; ++i)
+		for (int j = 0; j < 6; ++j)
+			result &= (bool)sscanf(params + 7 * (i * 6 + j), "%lf", &conf->c[j][i]);
 	attractor(conf);
 	return result;
 }
 
 static void str_c(coef c, char params[256])
 {
-	for (int i = 0; i < D; ++i)
-		for (int j = 0; j < Dn; ++j)
-			sprintf(params + 7 * (i * Dn + j), "% 1.3f ", c[j][i]);
+	for (int i = 0; i < 2; ++i)
+		for (int j = 0; j < 6; ++j)
+			sprintf(params + 7 * (i * 6 + j), "% 1.3f ", c[j][i]);
 }
 
 static double srgb(double L)
@@ -303,10 +301,10 @@ static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
 	unsigned count = 0;
 	for (unsigned n = CUTOFF; n < ITERATIONS; ++n) {
 		vec x_last;
-		for (int i = 0; i < D; ++i)
+		for (int i = 0; i < 2; ++i)
 			x_last[i] = x[i];
 		iteration(conf->c, x);
-		for (int i = 0; i < D; ++i)
+		for (int i = 0; i < 2; ++i)
 			v[i] = x[i] - x_last[i];
 
 		int i = (int)((D_HEIGHT - range[!o] * scale) / 2 + (x[!o] - conf->x_min[!o]) * scale);
@@ -507,7 +505,7 @@ static void set_video_params(const char *params, struct config *config_array, in
 
 	vec x_max;
 	vec x_min;
-	for (int i = 0; i < D; ++i) {
+	for (int i = 0; i < 2; ++i) {
 		x_min[i] = 1e10;
 		x_max[i] = -1e10;
 	}
@@ -519,14 +517,14 @@ static void set_video_params(const char *params, struct config *config_array, in
 		config_array[i].c[CJ][CI] += dt * i;
 		attractor(&config_array[i]);
 
-		for (int j = 0; j < D; ++j) {
+		for (int j = 0; j < 2; ++j) {
 			x_max[j] = MAX(x_max[j], config_array[i].x_max[j]);
 			x_min[j] = MIN(x_min[j], config_array[i].x_min[j]);
 		}
 	}
 
 	for (int i = 0; i < frames; ++i)
-		for (int j = 0; j < D; ++j) {
+		for (int j = 0; j < 2; ++j) {
 			config_array[i].x_max[j] = x_max[j];
 			config_array[i].x_min[j] = x_min[j];
 		}
@@ -599,8 +597,8 @@ static void video_params(coef c)
 {
 	if (!is_set(OP_COEFFICIENT)) {
 		set(OP_COEFFICIENT);
-		CI = rand() % D;
-		CJ = rand() % Dn;
+		CI = rand() % 2;
+		CJ = rand() % 6;
 	}
 
 	static const double step = 1e-2;
