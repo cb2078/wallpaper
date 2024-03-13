@@ -96,25 +96,53 @@ static double dst(vec x0, vec x1)
 	return sqrt(s);
 }
 
+static double triangle(double x)
+{
+	return 1 - 4 * fabs(x - floor(x + 0.5));
+}
+
+static double saw(double x)
+{
+	return 1 - 2 * (x - floor(x));
+}
+
 static void iteration(coef c, vec y)
 {
 #if 1
 	vec z;
 	for (int i = 0; i < 2; ++i)
-		if (TYPE == AT_POLY)
-			z[i] =
-				c[0][i] +
-				c[1][i] * y[0] +
-				c[2][i] * y[0] * y[0] +
-				c[3][i] * y[0] * y[1] +
-				c[4][i] * y[1] * y[1] +
-				c[5][i] * y[1];
-		else
-			z[i] =
-				c[0][i] * sin(c[1][i] * y[1]) +
-				c[2][i] * cos(c[3][i] * y[0]) +
-				c[4][i] * sin(c[5][i] * y[0]) +
-				c[6][i] * cos(c[7][i] * y[1]);
+		switch (TYPE) {
+			case AT_POLY:
+				z[i] =
+					c[0][i] +
+					c[1][i] * y[0] +
+					c[2][i] * y[0] * y[0] +
+					c[3][i] * y[0] * y[1] +
+					c[4][i] * y[1] * y[1] +
+					c[5][i] * y[1];
+				break;
+			case AT_TRIG:
+				z[i] =
+					c[0][i] * sin(c[1][i] * y[1]) +
+					c[2][i] * cos(c[3][i] * y[0]) +
+					c[4][i] * sin(c[5][i] * y[0]) +
+					c[6][i] * cos(c[7][i] * y[1]);
+				break;
+			case AT_SAW:
+				z[i] =
+					c[0][i] * saw(c[1][i] * y[1]) +
+					c[2][i] * saw(c[3][i] * y[0] + 0.5) +
+					c[4][i] * saw(c[5][i] * y[0]) +
+					c[6][i] * saw(c[7][i] * y[1] + 0.5);
+				break;
+			case AT_TRI:
+				z[i] =
+					c[0][i] * triangle(c[1][i] * y[1]) +
+					c[2][i] * triangle(c[3][i] * y[0] + 0.5) +
+					c[4][i] * triangle(c[5][i] * y[0]) +
+					c[6][i] * triangle(c[7][i] * y[1] + 0.5);
+				break;
+		}
 #else
 #define Y(i) (i < 2 ? y[i] : 1)
 	vec z = {0, 0};

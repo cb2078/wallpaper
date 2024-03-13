@@ -33,6 +33,15 @@ enum option_type {
 enum attractor_type {
 	AT_POLY,
 	AT_TRIG,
+	AT_SAW,
+	AT_TRI,
+};
+
+char *attractor_map[] = {
+	[AT_POLY] = "POLY",
+	[AT_TRIG] = "TRIG",
+	[AT_SAW] = "SAW",
+	[AT_TRI] = "TRI",
 };
 
 struct option {
@@ -164,7 +173,15 @@ static char *type_str(enum option_type type)
 		case TY_ENUM:
 			return "(BW|WB|HSV|RGB|MIX)";
 		case TY_ATTRACTOR:
-			return "(POLY|TRIG)";
+		{
+			static char buf[256];
+			int c;
+			c = snprintf(buf, 256, "(");
+			for (int i = 0; i < LENGTH(attractor_map); ++i)
+				c += snprintf(buf + c, 256 - c, "%s|", attractor_map[i]);
+			snprintf(buf + c - 1, 256 - c + 1, ")");
+			return buf;
+		}
 		case TY_STRING:
 		case TY_COEFFICIENT:
 			return "<string>";
@@ -234,7 +251,7 @@ static void val_str(struct option *o, char buf[256])
 			snprintf(buf, 256, "%c%d", "xyz"[CI], CJ);
 			break;
 		case TY_ATTRACTOR:
-			strncpy(buf, o->val.d == 0 ? "POLY" : "TRIG", 256);
+			strncpy(buf, attractor_map[o->val.d], 256);
 			break;
 		default:
 			exit(1);
@@ -354,17 +371,19 @@ static void parse_option(int mode, char *flag, char *val)
 						break;
 				if (i == LENGTH(colour_map))
 					option_type_error(flag, options[o].type, val);
-				COLOUR = (enum colour_type)i;
-			} break;
+				COLOUR = i;
+				break;
+			}
 			case OP_TYPE:
 			{
-				if (0 == strcmp(val, "POLY"))
-					TYPE = 0;
-				else if (0 == strcmp(val, "TRIG"))
-					TYPE = 1;
-				else
+				int i;
+				for (i = 0; i < LENGTH(attractor_map); ++i)
+					if (0 == strcmp(attractor_map[i], val))
+						break;
+				if (i == LENGTH(attractor_map))
 					option_type_error(flag, options[o].type, val);
-				CN = TYPE == 0 ? 6 : 8;
+				TYPE = i;
+				CN = TYPE == AT_POLY ? 6 : 8;
 				break;
 			}
 			case OP_COEFFICIENT:
