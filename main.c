@@ -363,10 +363,12 @@ static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
 			}
 		}
 
-	if (DOWNSCALE >  1)
+	if (DOWNSCALE >  1) {
 		stbir_resize_uint8_srgb((unsigned char *)big_buf, D_WIDTH, D_HEIGHT, D_WIDTH * sizeof(char) * 3,
 		                        (unsigned char *)buf, WIDTH, HEIGHT, WIDTH * sizeof(char) * 3,
 		                        STBIR_RGB);
+		free(big_buf);
+	}
 	free(info);
 }
 
