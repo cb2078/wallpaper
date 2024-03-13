@@ -64,7 +64,7 @@ unsigned ITERATIONS;
 
 #include "cmdline.c"
 
-typedef double coef[6][2];
+typedef double coef[8][2];
 typedef double vec[2];
 
 struct config {
@@ -98,16 +98,23 @@ static double dst(vec x0, vec x1)
 
 static void iteration(coef c, vec y)
 {
-#if 0
+#if 1
 	vec z;
 	for (int i = 0; i < 2; ++i)
-		z[i] =
-			c[0][i] +
-			c[1][i] * y[0] +
-			c[2][i] * y[0] * y[0] +
-			c[3][i] * y[0] * y[1] +
-			c[4][i] * y[1] * y[1] +
-			c[5][i] * y[1];
+		if (TYPE == AT_POLY)
+			z[i] =
+				c[0][i] +
+				c[1][i] * y[0] +
+				c[2][i] * y[0] * y[0] +
+				c[3][i] * y[0] * y[1] +
+				c[4][i] * y[1] * y[1] +
+				c[5][i] * y[1];
+		else
+			z[i] =
+				c[0][i] * sin(c[1][i] * y[1]) +
+				c[2][i] * cos(c[3][i] * y[0]) +
+				c[4][i] * sin(c[5][i] * y[0]) +
+				c[6][i] * cos(c[7][i] * y[1]);
 #else
 #define Y(i) (i < 2 ? y[i] : 1)
 	vec z = {0, 0};
@@ -176,7 +183,7 @@ static void random_config(struct config *conf)
 {
 	do {
 		for (int i = 0; i < 2; ++i)
-			for (int j = 0; j < 6; ++j)
+			for (int j = 0; j < CN; ++j)
 				conf->c[j][i] = (double)rand() / RAND_MAX * 4 - 2;
 	} while (attractor(conf) == false);
 }
@@ -185,8 +192,8 @@ static bool set_config(struct config *conf, const char params[256])
 {
 	bool result = true;
 	for (int i = 0; i < 2; ++i)
-		for (int j = 0; j < 6; ++j)
-			result &= (bool)sscanf(params + 7 * (i * 6 + j), "%lf", &conf->c[j][i]);
+		for (int j = 0; j < CN; ++j)
+			result &= (bool)sscanf(params + 7 * (i * CN + j), "%lf", &conf->c[j][i]);
 	attractor(conf);
 	return result;
 }
@@ -194,8 +201,8 @@ static bool set_config(struct config *conf, const char params[256])
 static void str_c(coef c, char params[256])
 {
 	for (int i = 0; i < 2; ++i)
-		for (int j = 0; j < 6; ++j)
-			sprintf(params + 7 * (i * 6 + j), "% 1.3f ", c[j][i]);
+		for (int j = 0; j < CN; ++j)
+			sprintf(params + 7 * (i * CN + j), "% 1.3f ", c[j][i]);
 }
 
 static double srgb(double L)
@@ -598,7 +605,7 @@ static void video_params(coef c)
 	if (!is_set(OP_COEFFICIENT)) {
 		set(OP_COEFFICIENT);
 		CI = rand() % 2;
-		CJ = rand() % 6;
+		CJ = rand() % CN;
 	}
 
 	static const double step = 1e-2;

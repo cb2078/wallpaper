@@ -17,15 +17,22 @@ enum option_name {
 	OP_PREVIEW,
 	OP_QUALITY,
 	OP_START,
+	OP_TYPE,
 	OP_WIDTH,
 };
 
 enum option_type {
-	TY_INT,
+	TY_ATTRACTOR,
+	TY_COEFFICIENT,
 	TY_DOUBLE,
 	TY_ENUM,
+	TY_INT,
 	TY_STRING,
-	TY_COEFFICIENT,
+};
+
+enum attractor_type {
+	AT_POLY,
+	AT_TRIG,
 };
 
 struct option {
@@ -35,7 +42,6 @@ struct option {
 	union {
 		int d;
 		double f;
-		enum colour_type c;
 		char *s;
 	} val;
 	char *doc;
@@ -121,6 +127,10 @@ struct option options[] = {
 		.type = TY_DOUBLE,
 		.doc = "start value for coefficient",
 	},
+	[OP_TYPE] = {
+		.str = "type",
+		.type = TY_ATTRACTOR,
+	},
 	[OP_WIDTH] = {
 		.str = "width",
 		.type = TY_INT,
@@ -129,8 +139,8 @@ struct option options[] = {
 };
 
 #define BORDER      options[OP_BORDER].val.f
-int CI, CJ;
-#define COLOUR      options[OP_COLOUR].val.c
+int CI, CJ, CN = 6;
+#define COLOUR      options[OP_COLOUR].val.d
 #define DURATION    options[OP_DURATION].val.d
 #define DOWNSCALE   options[OP_DOWNSCALE].val.d
 #define END         options[OP_END].val.f
@@ -140,6 +150,7 @@ int CI, CJ;
 #define PARAMS      options[OP_PARAMS].val.s
 #define PREVIEW     options[OP_PREVIEW].val.d
 #define QUALITY     options[OP_QUALITY].val.d
+#define TYPE        options[OP_TYPE].val.d
 #define START       options[OP_START].val.f
 #define WIDTH       options[OP_WIDTH].val.d
 
@@ -151,7 +162,9 @@ static char *type_str(enum option_type type)
 		case TY_DOUBLE:
 			return "<float>";
 		case TY_ENUM:
-			return  "(BW|WB|HSV|RGB|MIX)";
+			return "(BW|WB|HSV|RGB|MIX)";
+		case TY_ATTRACTOR:
+			return "(POLY|TRIG)";
 		case TY_STRING:
 		case TY_COEFFICIENT:
 			return "<string>";
@@ -196,6 +209,8 @@ static bool has_default(struct option *o)
 			return NULL != o->val.s;
 		case TY_COEFFICIENT:
 			return false;
+		case TY_ATTRACTOR:
+			return true;
 	}
 	exit(1);
 }
@@ -205,21 +220,25 @@ static void val_str(struct option *o, char buf[256])
 	switch (o->type) {
 		case TY_INT:
 			snprintf(buf, 256, "%d", o->val.d);
-			return;
+			break;
 		case TY_DOUBLE:
 			snprintf(buf, 256, "%.3f", o->val.f);
-			return;
+			break;
 		case TY_ENUM:
-			strncpy(buf, colour_map[o->val.c], 256);
-			return;
+			strncpy(buf, colour_map[o->val.d], 256);
+			break;
 		case TY_STRING:
 			snprintf(buf, 256, "%s", o->val.s);
-			return;
+			break;
 		case TY_COEFFICIENT:
 			snprintf(buf, 256, "%c%d", "xyz"[CI], CJ);
-			return;
+			break;
+		case TY_ATTRACTOR:
+			strncpy(buf, o->val.d == 0 ? "POLY" : "TRIG", 256);
+			break;
+		default:
+			exit(1);
 	}
-	exit(1);
 }
 
 static void help(void)
@@ -303,9 +322,7 @@ static void parse_option(int mode, char *flag, char *val)
 			case TY_DOUBLE:
 				format = "%lf";
 				break;
-			case TY_COEFFICIENT:
-			case TY_ENUM:
-			case TY_STRING:
+			default:
 				break;
 		}
 		// set the option
@@ -339,6 +356,17 @@ static void parse_option(int mode, char *flag, char *val)
 					option_type_error(flag, options[o].type, val);
 				COLOUR = (enum colour_type)i;
 			} break;
+			case OP_TYPE:
+			{
+				if (0 == strcmp(val, "POLY"))
+					TYPE = 0;
+				else if (0 == strcmp(val, "TRIG"))
+					TYPE = 1;
+				else
+					option_type_error(flag, options[o].type, val);
+				CN = TYPE == 0 ? 6 : 8;
+				break;
+			}
 			case OP_COEFFICIENT:
 			{
 				char c;

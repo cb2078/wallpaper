@@ -1,3 +1,3 @@
 website
 gradient map colouring
-other attractors
+hyperbolic attractors
