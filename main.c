@@ -20,6 +20,7 @@ unsigned THREAD_COUNT;
 struct work_queue_info {
 	volatile int next_entry;
 	volatile int entry_count;
+	volatile int back;
 };
 
 static void run_jobs(DWORD WINAPI (*callback)(void *), void *arg)
@@ -517,18 +518,62 @@ static void set_video_params(const char *params, struct config *config_array, in
 		}
 }
 
-static void write_video(const char *params, int frames)
-{
-	struct config config_array[frames];
-	set_video_params(params, config_array, frames);
-	write_attractors(config_array, frames);
-}
-
 static void video_preview(const char *params, int samples)
 {
 	struct config config_array[samples];
 	set_video_params(params, config_array, samples);
 	write_samples("preview", config_array, samples);
+}
+
+struct write_video_arg {
+	struct work_queue_info thread_info;
+	struct config *config_array;
+	FILE *pipe;
+};
+
+static DWORD WINAPI write_video_callback(void *arg_)
+{
+	struct write_video_arg *arg = (struct write_video_arg *)arg_;
+	char (*buf)[WIDTH][3] = malloc(sizeof(char) * HEIGHT * WIDTH * 3);
+
+	while (arg->thread_info.next_entry < arg->thread_info.entry_count) {
+		int s = InterlockedIncrement((long *)&arg->thread_info.next_entry) - 1;
+		if (s >= arg->thread_info.next_entry)
+			break;
+
+		render_image(&arg->config_array[s], buf);
+
+		// wait until it's out to to write the image
+		int undesired = -1;
+		while (s != arg->thread_info.back)
+			WaitOnAddress(&arg->thread_info.back, &undesired, sizeof(int), INFINITE);
+		fwrite(buf, sizeof(char) * HEIGHT * WIDTH * 3, 1, arg->pipe);
+		++arg->thread_info.back;
+		// notify other threads when we're done
+		WakeByAddressAll((void *)&arg->thread_info.back);
+	}
+
+	free(buf);
+	return 0;
+}
+
+static void write_video(const char *params, int frames)
+{
+	struct config config_array[frames];
+	set_video_params(params, config_array, frames);
+	char buf[256];
+	snprintf(buf, 256,
+	         "ffmpeg.exe -y -f rawvideo -pix_fmt rgb24 -s %dx%d -r %d -i - "
+	         "-c:v libx264 -preset ultrafast -qp 0 images/out.mp4", WIDTH, HEIGHT, FPS);
+	FILE *pipe = _popen(buf, "wb");
+
+	struct write_video_arg arg = {0};
+	arg.thread_info.entry_count = frames;
+	arg.config_array = config_array;
+	arg.pipe = pipe;
+	run_jobs(write_video_callback, (void *)&arg);
+
+	_pclose(pipe);
 }
 
 static void video_params(coef c)
