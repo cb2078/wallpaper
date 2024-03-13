@@ -11,6 +11,8 @@
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
+#include "stb_image_resize2.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -262,8 +264,14 @@ static void rgb_to_hsv(double r, double g, double b, double *h, double *s, doubl
 
 static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
 {
-	memset(buf, 0, sizeof(char) * HEIGHT * WIDTH * 3);
-	double (*info)[WIDTH][4] = calloc(1, sizeof(double) * HEIGHT * WIDTH * 4);
+	unsigned D_WIDTH = WIDTH * DOWNSCALE, D_HEIGHT = HEIGHT * DOWNSCALE;
+	char (*big_buf)[WIDTH * DOWNSCALE][3] = NULL;
+	if (DOWNSCALE > 1)
+		big_buf = calloc(1, sizeof(char) * D_HEIGHT * D_WIDTH * 3);
+	else
+		big_buf = buf;
+	memset(big_buf, 0, sizeof(char) * D_HEIGHT * D_WIDTH * 3);
+	double (*info)[D_WIDTH][4] = calloc(1, sizeof(double) * D_HEIGHT * D_WIDTH * 4);
 
 	vec x = {0};
 	for (unsigned n = 0; n < CUTOFF; ++n)
@@ -272,23 +280,23 @@ static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
 
 	double range[2] = {conf->x_max[0] - conf->x_min[0], conf->x_max[1] - conf->x_min[1]};
 	int o = range[0] < range[1];
-	double x_scale = (WIDTH - 1) / (conf->x_max[o] - conf->x_min[o]);
-	double y_scale = (HEIGHT - 1) / (conf->x_max[!o] - conf->x_min[!o]);
+	double x_scale = (D_WIDTH - 1) / (conf->x_max[o] - conf->x_min[o]);
+	double y_scale = (D_HEIGHT - 1) / (conf->x_max[!o] - conf->x_min[!o]);
 	double scale = MIN(x_scale, y_scale) * (1 - BORDER);
 
 #if 0
-	for (int i = 0; i < HEIGHT; ++i)
-		for (int j = 0; j < WIDTH; ++j) {
+	for (int i = 0; i < D_HEIGHT; ++i)
+		for (int j = 0; j < D_WIDTH; ++j) {
 			vec x[2];
-			x[!o] = (double)i / HEIGHT * 4 - 2;
-			x[ o] = (double)j / WIDTH * 4 - 2;
+			x[!o] = (double)i / D_HEIGHT * 4 - 2;
+			x[ o] = (double)j / D_WIDTH * 4 - 2;
 			unsigned n = 0;
 			for (; n < 1000; ++n) {
 				iteration(x);
 				if (fabs(x[0]) > 1e10 || fabs(x[0]) < 1e-10 || fabs(x[1]) > 1e10 || fabs(x[1]) < 1e-10)
 					break;
 			}
-			buf[i][j][0] = buf[i][j][1] = buf[i][j][2] = (char)(0x7 * n);
+			big_buf[i][j][0] = big_buf[i][j][1] = big_buf[i][j][2] = (char)(0x7 * n);
 		}
 #endif
 
@@ -301,10 +309,10 @@ static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
 		for (int i = 0; i < D; ++i)
 			v[i] = x[i] - x_last[i];
 
-		int i = (int)((HEIGHT - range[!o] * scale) / 2 + (x[!o] - conf->x_min[!o]) * scale);
-		int j = (int)((WIDTH  - range[ o] * scale) / 2 + (x[ o] - conf->x_min[ o]) * scale);
-		if (i < 0 || i >= HEIGHT) continue;
-		if (j < 0 || j >= WIDTH) continue;
+		int i = (int)((D_HEIGHT - range[!o] * scale) / 2 + (x[!o] - conf->x_min[!o]) * scale);
+		int j = (int)((D_WIDTH  - range[ o] * scale) / 2 + (x[ o] - conf->x_min[ o]) * scale);
+		if (i < 0 || i >= D_HEIGHT) continue;
+		if (j < 0 || j >= D_WIDTH) continue;
 
 		count += info[i][j][0] == 0;
 		info[i][j][0] += 1;
@@ -328,8 +336,8 @@ static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
 	}
 	double DENSITY = (double)ITERATIONS / count;
 
-	for (int i = 0; i < HEIGHT; ++i)
-		for (int j = 0; j < WIDTH; ++j) {
+	for (int i = 0; i < D_HEIGHT; ++i)
+		for (int j = 0; j < D_WIDTH; ++j) {
 			switch (COLOUR) {
 				case HSV:
 				{
@@ -339,22 +347,26 @@ static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
 					double tmp[3];
 					hsv_to_rgb(h, s, v, tmp);
 					for (int k = 0; k < 3; ++k)
-						buf[i][j][k] = (char)(0xff * srgb(tmp[k]));
+						big_buf[i][j][k] = (char)(0xff * srgb(tmp[k]));
 				} break;
 				default:
 					for (int k = 0; k < 3; ++k) {
 						double a = MIN(0xff, info[i][j][COLOUR == BW ? 0 : k + 1] * INTENSITY / DENSITY);
 						a /= 0xff;
 						a = srgb(a);
-						buf[i][j][k] = (char)(0xff * a);
+						big_buf[i][j][k] = (char)(0xff * a);
 					}
 					if (COLOUR == BW)
 						for (int k = 0; k < 3; ++k)
-							buf[i][j][k] = 0xff - buf[i][j][k];
+							big_buf[i][j][k] = 0xff - big_buf[i][j][k];
 					break;
 			}
 		}
 
+	if (DOWNSCALE >  1)
+		stbir_resize_uint8_srgb((unsigned char *)big_buf, D_WIDTH, D_HEIGHT, D_WIDTH * sizeof(char) * 3,
+		                        (unsigned char *)buf, WIDTH, HEIGHT, WIDTH * sizeof(char) * 3,
+		                        STBIR_RGB);
 	free(info);
 }
 

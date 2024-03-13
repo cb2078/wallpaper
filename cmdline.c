@@ -7,6 +7,7 @@ enum option_name {
 	OP_BORDER,
 	OP_COEFFICIENT,
 	OP_COLOUR,
+	OP_DOWNSCALE,
 	OP_DURATION,
 	OP_END,
 	OP_FPS,
@@ -58,6 +59,12 @@ struct option options[] = {
 		.str = "colour",
 		.type = TY_ENUM,
 		.doc = "how to colour the attractor",
+	},
+	[OP_DOWNSCALE] = {
+		.str = "downscale",
+		.type = TY_INT,
+		.doc = "downscale from an image <downscale> times larger",
+		.val.d = 2,
 	},
 	[OP_DURATION] = {
 		.str = "duration",
@@ -125,6 +132,7 @@ struct option options[] = {
 int CI, CJ;
 #define COLOUR      options[OP_COLOUR].val.c
 #define DURATION    options[OP_DURATION].val.d
+#define DOWNSCALE   options[OP_DOWNSCALE].val.d
 #define END         options[OP_END].val.f
 #define FPS         options[OP_FPS].val.d
 #define HEIGHT      options[OP_HEIGHT].val.d
@@ -310,6 +318,7 @@ static void parse_option(int mode, char *flag, char *val)
 			option_type_error(flag, options[o].type, val); \
 	} break;
 			CASE(BORDER);
+			CASE(DOWNSCALE);
 			CASE(DURATION);
 			CASE(END);
 			CASE(FPS);
