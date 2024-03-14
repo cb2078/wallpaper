@@ -295,6 +295,45 @@ static void rgb_to_hsv(double r, double g, double b, double *h, double *s, doubl
 	*h = *h < 0 ? 360 + *h : *h;
 }
 
+static void hsv_to_hsl(double sv, double v, double *sl, double *l)
+{
+	*l = v * (1 - sv / 2);
+	*sl = *l == 0 || *l == 1 ? 0 : (v - *l) / MIN(*l, 1 - *l);
+}
+
+static void hsl_to_hsv(double sl, double l, double *sv, double *v)
+{
+	*v = l + sl * MIN(l, 1 - l);
+	*sv = *v == 0 ? 0 : 2 * (1 - l / *v);
+}
+
+static void hsl_to_rgb(double h, double s, double l, double rgb[3])
+{
+	double sv, v;
+	hsl_to_hsv(s, l, &sv, &v);
+	hsv_to_rgb(h, sv, v, rgb);
+}
+
+static void rgb_to_hsl(double rgb[3], double *h, double *s, double *l)
+{
+	double sv, v;
+	rgb_to_hsv(rgb[0], rgb[1], rgb[2], h, &sv, &v);
+	hsv_to_hsl(sv, v, s, l);
+}
+
+static void rgb256_to_rgb1(char rgb256[3], double rgb1[3])
+{
+	for (int k = 0; k < 3; ++k)
+		rgb1[k] = (double)rgb256[k] / 0xff;
+}
+
+static void rgb1_to_rgb256(double rgb1[3], char rgb256[3])
+{
+	for (int k = 0; k < 3; ++k)
+		rgb256[k] = (char)(rgb1[k] * 0xff);
+}
+
+
 static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
 {
 	unsigned D_WIDTH = WIDTH * DOWNSCALE, D_HEIGHT = HEIGHT * DOWNSCALE;
