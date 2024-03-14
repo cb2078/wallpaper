@@ -13,6 +13,7 @@ enum option_name {
 	OP_FPS,
 	OP_HEIGHT,
 	OP_INTENSITY,
+	OP_LIGHT,
 	OP_PARAMS,
 	OP_PREVIEW,
 	OP_QUALITY,
@@ -31,11 +32,37 @@ enum option_type {
 	TY_STRING,
 };
 
+enum colour_type {
+	KIN,
+	INF,
+	BLA,
+	VID,
+	PLA,
+	BW,
+	HSV,
+	RGB,
+	MIX,
+	COLOUR_COUNT,
+};
+
+char *colour_map[] = {
+	[KIN] = "KIN",
+	[INF] = "INF",
+	[BLA] = "BLA",
+	[VID] = "VID",
+	[PLA] = "PLA",
+	[BW] = "BW",
+	[HSV] = "HSV",
+	[RGB] = "RGB",
+	[MIX] = "MIX",
+};
+
 enum attractor_type {
 	AT_POLY,
 	AT_TRIG,
 	AT_SAW,
 	AT_TRI,
+	AT_COUNT,
 };
 
 char *attractor_map[] = {
@@ -75,6 +102,7 @@ struct option options[] = {
 		.str = "colour",
 		.type = TY_ENUM,
 		.doc = "how to colour the attractor",
+		.val.d = BW,
 	},
 	[OP_DOWNSCALE] = {
 		.str = "downscale",
@@ -171,6 +199,15 @@ int CI, CJ, CN = 6;
 #define STRETCH     options[OP_STRETCH].val.d
 #define WIDTH       options[OP_WIDTH].val.d
 
+static void enum_str(char buf[256], char *map[], int map_len)
+{
+	int c;
+	c = snprintf(buf, 256, "(");
+	for (int i = 0; i < map_len; ++i)
+		c += snprintf(buf + c, 256 - c, "%s|", map[i]);
+	snprintf(buf + c - 1, 256 - c + 1, ")");
+}
+
 static char *type_str(enum option_type type)
 {
 	switch (type) {
@@ -179,17 +216,13 @@ static char *type_str(enum option_type type)
 		case TY_DOUBLE:
 			return "<float>";
 		case TY_ENUM:
-			return "(BW|WB|HSV|RGB|MIX)";
+			static char enum_buf[256];
+			enum_str(enum_buf, colour_map, COLOUR_COUNT);
+			return enum_buf;
 		case TY_ATTRACTOR:
-		{
-			static char buf[256];
-			int c;
-			c = snprintf(buf, 256, "(");
-			for (int i = 0; i < LENGTH(attractor_map); ++i)
-				c += snprintf(buf + c, 256 - c, "%s|", attractor_map[i]);
-			snprintf(buf + c - 1, 256 - c + 1, ")");
-			return buf;
-		}
+			static char attractor_buf[256];
+			enum_str(attractor_buf, attractor_map, AT_COUNT);
+			return attractor_buf;
 		case TY_STRING:
 		case TY_COEFFICIENT:
 			return "<string>";

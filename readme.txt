@@ -1,3 +1,3 @@
 website
-gradient map colouring
-hyperbolic attractors
+make stretch a default option
+light mode

@@ -40,20 +40,6 @@ static void run_jobs(DWORD WINAPI (*callback)(void *), void *arg)
 		CloseHandle(threads[i]);
 }
 
-enum colour_type {
-	BW,
-	HSV,
-	RGB,
-	MIX,
-};
-
-char *colour_map[] = {
-	[BW] = "BW",
-	[HSV] = "HSV",
-	[RGB] = "RGB",
-	[MIX] = "MIX",
-};
-
 unsigned CUTOFF = 10000;
 unsigned ITERATIONS;
 #define SAMPLES PREVIEW
@@ -63,6 +49,7 @@ unsigned ITERATIONS;
 #define LENGTH(a)	(sizeof(a) / sizeof(a[0]))
 
 #include "cmdline.c"
+#include "gradient.h"
 
 typedef double coef[8][2];
 typedef double vec[2];
@@ -407,7 +394,7 @@ static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
 				info[i][j][2] += MAX(0, -v[0] / conf->v_max[0]);
 				info[i][j][3] += fabs(v[1]) / conf->v_max[1];
 				break;
-			case BW:
+			default:
 				break;
 		}
 	}
@@ -424,19 +411,40 @@ static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
 					double tmp[3];
 					hsv_to_rgb(h, s, v, tmp);
 					for (int k = 0; k < 3; ++k)
-						big_buf[i][j][k] = (char)(0xff * srgb(tmp[k]));
-				} break;
+						big_buf[i][j][k] = (char)(0xff * (tmp[k]));
+					break;
+				}
+				case BW:
+				{
+					double v = MIN(0xff, INTENSITY / DENSITY * info[i][j][0]);
+					for (int k = 0; k < 3; ++k)
+						big_buf[i][j][k] = (char)(0xff - 0xff * sqrt(v / 0xff));
+					break;
+				}
+				case KIN:
+				case INF:
+				case BLA:
+				{
+					double v = MIN(1, INTENSITY / DENSITY * info[i][j][0] / 0xff);
+					double x = sqrt(v) * (GN - 1);
+					double t = fmod(x, 1);
+					int l = floor(x), r = ceil(x);
+					for (int k = 0; k < 3; ++k) {
+						double a = t * gradients[COLOUR][r][k] + (1 - t) * gradients[COLOUR][l][k];
+						big_buf[i][j][k] = (char)a;
+					}
+					break;
+				}
 				default:
+				{
 					for (int k = 0; k < 3; ++k) {
 						double a = MIN(0xff, info[i][j][COLOUR == BW ? 0 : k + 1] * INTENSITY / DENSITY);
 						a /= 0xff;
 						a = srgb(a);
 						big_buf[i][j][k] = (char)(0xff * a);
 					}
-					if (COLOUR == BW)
-						for (int k = 0; k < 3; ++k)
-							big_buf[i][j][k] = 0xff - big_buf[i][j][k];
 					break;
+				}
 			}
 		}
 
@@ -447,6 +455,20 @@ static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
 		free(big_buf);
 	}
 	free(info);
+
+#if 0
+	// write debug gradient map
+	for (int j = 0; j < MIN(600, D_HEIGHT); ++j) {
+		double x = (double)j / 600 * (GN - 1);
+		double t = fmod(x, 1);
+		int l = floor(x);
+		int r = ceil(x);
+		for (int i = 0; i < 20; ++i)
+			for (int k = 0; k < 3; ++k)
+				buf[i][j][k] = (char)((1 - t) * gradients[COLOUR][l][k] + t * gradients[COLOUR][r][k]);
+
+	}
+#endif
 }
 
 static int write_image(char *name, int width, int height, void *buf)
@@ -706,6 +728,16 @@ static void video_params(coef c)
 
 int main(int argc, char **argv)
 {
+	for (int g = 0; g < NUM_GRADIENTS; ++g)
+		for (int i = 0; i < GN; ++i) {
+			double tmp[3];
+			for (int k = 0; k < 3; ++k)
+				tmp[k] = gradients[g][i][k] / 0xff;
+			set_brightness((double)i / (GN - 1), tmp, tmp);
+			for (int k = 0; k < 3; ++k)
+				gradients[g][i][k] = tmp[k] * 0xff;
+		}
+
 	srand(time(NULL));
 
 	// thread count
