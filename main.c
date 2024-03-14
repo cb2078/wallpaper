@@ -329,7 +329,8 @@ static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
 		big_buf = calloc(1, sizeof(char) * D_HEIGHT * D_WIDTH * 3);
 	else
 		big_buf = buf;
-	memset(big_buf, 0, sizeof(char) * D_HEIGHT * D_WIDTH * 3);
+	char bg = LIGHT == (COLOUR != BW) ? 0xff : 0;
+	memset(big_buf, bg, sizeof(char) * D_HEIGHT * D_WIDTH * 3);
 	double (*info)[D_WIDTH][4] = calloc(1, sizeof(double) * D_HEIGHT * D_WIDTH * 4);
 
 	vec x = {0};
@@ -391,8 +392,8 @@ static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
 				break;
 			case RGB:
 				info[i][j][1] += MAX(0, v[0] / conf->v_max[0]);
-				info[i][j][2] += MAX(0, -v[0] / conf->v_max[0]);
-				info[i][j][3] += fabs(v[1]) / conf->v_max[1];
+				info[i][j][2 + LIGHT] += MAX(0, -v[0] / conf->v_max[0]);
+				info[i][j][3 - LIGHT] += fabs(v[1]) / conf->v_max[1];
 				break;
 			default:
 				break;
@@ -402,6 +403,8 @@ static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
 
 	for (int i = 0; i < D_HEIGHT; ++i)
 		for (int j = 0; j < D_WIDTH; ++j) {
+			if (info[i][j][0] == 0)
+				continue;
 			switch (COLOUR) {
 				case HSV:
 				{
@@ -410,38 +413,47 @@ static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
 					double v = MIN(1, INTENSITY / DENSITY * info[i][j][0] / 0xff);
 					double tmp[3];
 					hsv_to_rgb(h, s, v, tmp);
-					for (int k = 0; k < 3; ++k)
-						big_buf[i][j][k] = (char)(0xff * (tmp[k]));
+					for (int k = 0; k < 3; ++k) {
+						double a = tmp[k];
+						a = srgb(a);
+						a = LIGHT ? 1 - a : a;
+						a *= 0xff;
+						big_buf[i][j][k] = (char)a;
+					}
 					break;
 				}
 				case BW:
 				{
 					double v = MIN(0xff, INTENSITY / DENSITY * info[i][j][0]);
-					for (int k = 0; k < 3; ++k)
-						big_buf[i][j][k] = (char)(0xff - 0xff * sqrt(v / 0xff));
+					for (int k = 0; k < 3; ++k) {
+						double a = 0xff * sqrt(v / 0xff);
+						a = LIGHT ? a : 1 - a;
+						big_buf[i][j][k] = (char)a;
+					}
 					break;
 				}
-				case KIN:
-				case INF:
-				case BLA:
+				case MIX:
+				case RGB:
+				{
+					for (int k = 0; k < 3; ++k) {
+						double a = MIN(0xff, info[i][j][k + 1] * INTENSITY / DENSITY);
+						a /= 0xff;
+						a = srgb(a);
+						a = LIGHT ? 1 - a : a;
+						big_buf[i][j][k] = (char)(0xff * a);
+					}
+					break;
+				}
+				// gradient map
+				default:
 				{
 					double v = MIN(1, INTENSITY / DENSITY * info[i][j][0] / 0xff);
-					double x = sqrt(v) * (GN - 1);
+					double x = (LIGHT ? 1 - sqrt(v) : sqrt(v)) * (GN - 1);
 					double t = fmod(x, 1);
 					int l = floor(x), r = ceil(x);
 					for (int k = 0; k < 3; ++k) {
 						double a = t * gradients[COLOUR][r][k] + (1 - t) * gradients[COLOUR][l][k];
 						big_buf[i][j][k] = (char)a;
-					}
-					break;
-				}
-				default:
-				{
-					for (int k = 0; k < 3; ++k) {
-						double a = MIN(0xff, info[i][j][COLOUR == BW ? 0 : k + 1] * INTENSITY / DENSITY);
-						a /= 0xff;
-						a = srgb(a);
-						big_buf[i][j][k] = (char)(0xff * a);
 					}
 					break;
 				}

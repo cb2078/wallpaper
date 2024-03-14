@@ -142,6 +142,12 @@ struct option options[] = {
 		.val.f = 50,
 		.doc = "how bright the iterations make each pixel",
 	},
+	[OP_LIGHT] = {
+		.str = "light",
+		.type = TY_INT,
+		.doc = "render in light mode or dark mode (default)",
+		.val.d = 0,
+	},
 	[OP_PARAMS] = {
 		.str = "params",
 		.type = TY_STRING,
@@ -191,6 +197,7 @@ int CI, CJ, CN = 6;
 #define FPS         options[OP_FPS].val.d
 #define HEIGHT      options[OP_HEIGHT].val.d
 #define INTENSITY   options[OP_INTENSITY].val.f
+#define LIGHT       options[OP_LIGHT].val.d
 #define PARAMS      options[OP_PARAMS].val.s
 #define PREVIEW     options[OP_PREVIEW].val.d
 #define QUALITY     options[OP_QUALITY].val.d
@@ -399,6 +406,7 @@ static void parse_option(int mode, char *flag, char *val)
 			CASE(FPS);
 			CASE(HEIGHT);
 			CASE(INTENSITY);
+			CASE(LIGHT);
 			CASE(PREVIEW);
 			CASE(QUALITY);
 			CASE(START);
