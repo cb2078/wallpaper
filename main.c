@@ -313,9 +313,14 @@ static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
 
 	double range[2] = {conf->x_max[0] - conf->x_min[0], conf->x_max[1] - conf->x_min[1]};
 	int o = range[0] < range[1];
-	double x_scale = (D_WIDTH - 1) / (conf->x_max[o] - conf->x_min[o]);
-	double y_scale = (D_HEIGHT - 1) / (conf->x_max[!o] - conf->x_min[!o]);
-	double scale = MIN(x_scale, y_scale) * (1 - BORDER);
+	double x_scale = (D_WIDTH - 1) / (conf->x_max[o] - conf->x_min[o]) * (1 - BORDER);
+	double y_scale = (D_HEIGHT - 1) / (conf->x_max[!o] - conf->x_min[!o]) * (1 - BORDER);
+	if (!STRETCH) {
+		if (x_scale > y_scale)
+			x_scale = y_scale;
+		else
+			y_scale = x_scale;
+	}
 
 #if 0
 	for (int i = 0; i < D_HEIGHT; ++i)
@@ -342,8 +347,8 @@ static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
 		for (int i = 0; i < 2; ++i)
 			v[i] = x[i] - x_last[i];
 
-		int i = (int)((D_HEIGHT - range[!o] * scale) / 2 + (x[!o] - conf->x_min[!o]) * scale);
-		int j = (int)((D_WIDTH  - range[ o] * scale) / 2 + (x[ o] - conf->x_min[ o]) * scale);
+		int i = (int)((D_HEIGHT - range[!o] * y_scale) / 2 + (x[!o] - conf->x_min[!o]) * y_scale);
+		int j = (int)((D_WIDTH  - range[ o] * x_scale) / 2 + (x[ o] - conf->x_min[ o]) * x_scale);
 		if (i < 0 || i >= D_HEIGHT) continue;
 		if (j < 0 || j >= D_WIDTH) continue;
 

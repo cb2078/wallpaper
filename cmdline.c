@@ -17,6 +17,7 @@ enum option_name {
 	OP_PREVIEW,
 	OP_QUALITY,
 	OP_START,
+	OP_STRETCH,
 	OP_TYPE,
 	OP_WIDTH,
 };
@@ -136,6 +137,12 @@ struct option options[] = {
 		.type = TY_DOUBLE,
 		.doc = "start value for coefficient",
 	},
+	[OP_STRETCH] = {
+		.str = "stretch",
+		.type = TY_INT,
+		.doc = "weather to stretch the fractal",
+		.val.d = 0,
+	},
 	[OP_TYPE] = {
 		.str = "type",
 		.type = TY_ATTRACTOR,
@@ -161,6 +168,7 @@ int CI, CJ, CN = 6;
 #define QUALITY     options[OP_QUALITY].val.d
 #define TYPE        options[OP_TYPE].val.d
 #define START       options[OP_START].val.f
+#define STRETCH     options[OP_STRETCH].val.d
 #define WIDTH       options[OP_WIDTH].val.d
 
 static char *type_str(enum option_type type)
@@ -361,6 +369,7 @@ static void parse_option(int mode, char *flag, char *val)
 			CASE(PREVIEW);
 			CASE(QUALITY);
 			CASE(START);
+			CASE(STRETCH);
 			CASE(WIDTH);
 #undef CASE
 			case OP_COLOUR:
