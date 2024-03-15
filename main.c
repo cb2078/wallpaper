@@ -42,7 +42,6 @@ static void run_jobs(DWORD WINAPI (*callback)(void *), void *arg)
 
 unsigned CUTOFF = 10000;
 unsigned ITERATIONS;
-#define SAMPLES PREVIEW
 
 #define MAX(x, y)	((x) > (y) ? (x) : (y))
 #define MIN(x, y)	((x) < (y) ? (x) : (y))
@@ -57,6 +56,7 @@ typedef double vec[2];
 struct config {
 	coef c;
 	vec x_min, x_max, v_max;
+	enum colour_type colour;
 };
 
 static vec u[3] = {
@@ -196,6 +196,7 @@ static bool is_valid(coef c)
 
 static void random_config(struct config *conf)
 {
+	conf->colour = COLOUR;
 	do {
 		for (int i = 0; i < 2; ++i)
 			for (int j = 0; j < CN; ++j)
@@ -205,6 +206,7 @@ static void random_config(struct config *conf)
 
 static bool set_config(struct config *conf, const char params[256])
 {
+	conf->colour = COLOUR;
 	bool result = true;
 	for (int i = 0; i < 2; ++i)
 		for (int j = 0; j < CN; ++j)
@@ -329,7 +331,7 @@ static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
 		big_buf = calloc(1, sizeof(char) * D_HEIGHT * D_WIDTH * 3);
 	else
 		big_buf = buf;
-	char bg = LIGHT == (COLOUR != BW) ? 0xff : 0;
+	char bg = LIGHT == (conf->colour != BW) ? 0xff : 0;
 	memset(big_buf, bg, sizeof(char) * D_HEIGHT * D_WIDTH * 3);
 	double (*info)[D_WIDTH][4] = calloc(1, sizeof(double) * D_HEIGHT * D_WIDTH * 4);
 
@@ -381,7 +383,7 @@ static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
 
 		count += info[i][j][0] == 0;
 		info[i][j][0] += 1;
-		switch (COLOUR) {
+		switch (conf->colour) {
 			case HSV:
 				info[i][j][1] += v[1] / conf->v_max[1];
 				info[i][j][2] += v[0] / conf->v_max[0];
@@ -405,7 +407,7 @@ static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
 		for (int j = 0; j < D_WIDTH; ++j) {
 			if (info[i][j][0] == 0)
 				continue;
-			switch (COLOUR) {
+			switch (conf->colour) {
 				case HSV:
 				{
 					double h = 180 + (atan2(info[i][j][1], info[i][j][2]) * 180 / M_PI);
@@ -452,7 +454,7 @@ static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
 					double t = fmod(x, 1);
 					int l = floor(x), r = ceil(x);
 					for (int k = 0; k < 3; ++k) {
-						double a = t * gradients[COLOUR][r][k] + (1 - t) * gradients[COLOUR][l][k];
+						double a = t * gradients[conf->colour][r][k] + (1 - t) * gradients[conf->colour][l][k];
 						big_buf[i][j][k] = (char)a;
 					}
 					break;
@@ -477,7 +479,7 @@ static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
 		int r = ceil(x);
 		for (int i = 0; i < 20; ++i)
 			for (int k = 0; k < 3; ++k)
-				buf[i][j][k] = (char)((1 - t) * gradients[COLOUR][l][k] + t * gradients[COLOUR][r][k]);
+				buf[i][j][k] = (char)((1 - t) * gradients[conf->colour][l][k] + t * gradients[conf->colour][r][k]);
 
 	}
 #endif
@@ -738,6 +740,32 @@ static void video_params(coef c)
 	}
 }
 
+static void load_config(struct config config_array[256], int *count)
+{
+	FILE *f = fopen(PARAMS, "r");
+	if (f == NULL) {
+		fprintf(stderr, "option error: --params could not open \"%s\"\n", PARAMS);
+		exit(1);
+	}
+
+	if (*count == 0)  {
+		while (!feof(f))
+			*count += fgetc(f) == '\n';
+		rewind(f);
+	}
+
+	char buf[256];
+	for (int i = 0; i < *count && fgets(buf, 256, f); ++i) {
+		int result = set_config(&config_array[i], buf);
+		if (!result) {
+			fprintf(stderr, "parse error when reading \"%s\", line %d:\n", PARAMS, i);
+			fprintf(stderr, "%s", buf);
+			fprintf(stderr, "%s should be a %s\n", PARAMS, options[OP_PARAMS].doc);
+			exit(1);
+		}
+	}
+}
+
 int main(int argc, char **argv)
 {
 	for (int g = 0; g < NUM_GRADIENTS; ++g)
@@ -786,32 +814,36 @@ int main(int argc, char **argv)
 
 	switch (mode) {
 		case IMAGE:
-			if (SAMPLES) {
-				sample_attractor(SAMPLES);
-			} else if (PARAMS) {
-				FILE *f = fopen(PARAMS, "r");
-				if (f == NULL) {
-					fprintf(stderr, "option error: --params could not open \"%s\"\n", PARAMS);
+			if (PREVIEW && PARAMS) {
+				// TODO conflig resolution
+				fprintf(stderr, "option error: --params is not compatible with --preview\n");
+				exit(1);
+			} else if (PREVIEW) {
+				sample_attractor(PREVIEW);
+			} else if (COLOUR_PREVIEW) {
+				if (is_set(OP_COLOUR)) {
+					// TODO conflig resolution
+					fprintf(stderr, "option error: --colour_preview is not compatible with --preview\n");
 					exit(1);
 				}
 
-				int count = 0;
-				while (!feof(f))
-					count += fgetc(f) == '\n';
-				rewind(f);
-
-				struct config config_array[count];
-				char buf[256];
-				for (int i = 0; fgets(buf, 256, f); ++i) {
-					int result = set_config(&config_array[i], buf);
-					if (!result) {
-						fprintf(stderr, "parse error when reading \"%s\", line %d:\n", PARAMS, i);
-						fprintf(stderr, "%s", buf);
-						fprintf(stderr, "%s should be a %s\n", PARAMS, options[OP_PARAMS].doc);
-						exit(1);
-					}
+				struct config config_array[COLOUR_COUNT];
+				int count = 1;
+				if (PARAMS)
+					load_config(config_array, &count);
+				else
+					random_config(&config_array[0]);
+				for (int i = 1; i < COLOUR_COUNT; ++i) {
+					memcpy(&config_array[i], &config_array[0], sizeof(struct config));
+					config_array[i].colour = (enum colour_type)i;
 				}
+				config_array[0].colour = (enum colour_type)0;
 
+				write_samples("colour_preview", config_array, COLOUR_COUNT);
+			} else if (PARAMS) {
+				struct config config_array[256];
+				int count = 0;
+				load_config(config_array, &count);
 				write_attractors(config_array, count);
 			} else {
 				struct config conf;
@@ -825,31 +857,17 @@ int main(int argc, char **argv)
 			break;
 		case VIDEO:
 			struct config conf;
-			if (PARAMS) {
-				FILE *f = fopen(PARAMS, "r");
-				if (f == NULL) {
-					fprintf(stderr, "option error: --params could not open \"%s\"\n", PARAMS);
-					exit(1);
-				}
-
-				char buf[256];
-				fgets(buf, 256, f);
-				int result = set_config(&conf, buf);
-				if (!result) {
-					fprintf(stderr, "parse error when reading \"%s\", line %d:\n", PARAMS, 0);
-					fprintf(stderr, "%s", buf);
-					fprintf(stderr, "%s should be a %s\n", PARAMS, options[OP_PARAMS].doc);
-					exit(1);
-				}
-			} else {
+			int count = 1;
+			if (PARAMS)
+				load_config(&conf, &count);
+			else
 				random_config(&conf);
-			}
 
 			video_params(conf.c);
 			char params[256];
 			str_c(conf.c, params);
-			if (SAMPLES)
-				video_preview(params, SAMPLES);
+			if (PREVIEW)
+				video_preview(params, PREVIEW);
 			else
 				write_video(params, DURATION * FPS);
 			break;

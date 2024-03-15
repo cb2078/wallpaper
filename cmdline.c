@@ -7,6 +7,7 @@ enum option_name {
 	OP_BORDER,
 	OP_COEFFICIENT,
 	OP_COLOUR,
+	OP_COLOUR_PREVIEW,
 	OP_DOWNSCALE,
 	OP_DURATION,
 	OP_END,
@@ -82,7 +83,7 @@ struct option {
 		char *s;
 	} val;
 	char *doc;
-	enum option_name conflicts;
+	enum option_name conflicts; // TODO conflict resolution
 	bool set;
 };
 
@@ -103,6 +104,15 @@ struct option options[] = {
 		.type = TY_ENUM,
 		.doc = "how to colour the attractor",
 		.val.d = BW,
+		.conflicts = OP_COLOUR,
+	},
+	[OP_COLOUR_PREVIEW] = {
+		.str = "colour_preview",
+		.type = TY_INT,
+		.doc = "make preview of a fractor in all colours",
+		.val.d = 0,
+		.conflicts = OP_PREVIEW,
+		.mode = IMAGE,
 	},
 	[OP_DOWNSCALE] = {
 		.str = "downscale",
@@ -188,23 +198,24 @@ struct option options[] = {
 	},
 };
 
-#define BORDER      options[OP_BORDER].val.f
+#define BORDER         options[OP_BORDER].val.f
 int CI, CJ, CN = 6;
-#define COLOUR      options[OP_COLOUR].val.d
-#define DURATION    options[OP_DURATION].val.d
-#define DOWNSCALE   options[OP_DOWNSCALE].val.d
-#define END         options[OP_END].val.f
-#define FPS         options[OP_FPS].val.d
-#define HEIGHT      options[OP_HEIGHT].val.d
-#define INTENSITY   options[OP_INTENSITY].val.f
-#define LIGHT       options[OP_LIGHT].val.d
-#define PARAMS      options[OP_PARAMS].val.s
-#define PREVIEW     options[OP_PREVIEW].val.d
-#define QUALITY     options[OP_QUALITY].val.d
-#define TYPE        options[OP_TYPE].val.d
-#define START       options[OP_START].val.f
-#define STRETCH     options[OP_STRETCH].val.d
-#define WIDTH       options[OP_WIDTH].val.d
+#define COLOUR         options[OP_COLOUR].val.d
+#define COLOUR_PREVIEW options[OP_COLOUR_PREVIEW].val.d
+#define DURATION       options[OP_DURATION].val.d
+#define DOWNSCALE      options[OP_DOWNSCALE].val.d
+#define END            options[OP_END].val.f
+#define FPS            options[OP_FPS].val.d
+#define HEIGHT         options[OP_HEIGHT].val.d
+#define INTENSITY      options[OP_INTENSITY].val.f
+#define LIGHT          options[OP_LIGHT].val.d
+#define PARAMS         options[OP_PARAMS].val.s
+#define PREVIEW        options[OP_PREVIEW].val.d
+#define QUALITY        options[OP_QUALITY].val.d
+#define TYPE           options[OP_TYPE].val.d
+#define START          options[OP_START].val.f
+#define STRETCH        options[OP_STRETCH].val.d
+#define WIDTH          options[OP_WIDTH].val.d
 
 static void enum_str(char buf[256], char *map[], int map_len)
 {
@@ -400,6 +411,7 @@ static void parse_option(int mode, char *flag, char *val)
 			option_type_error(flag, options[o].type, val); \
 	} break;
 			CASE(BORDER);
+			CASE(COLOUR_PREVIEW);
 			CASE(DOWNSCALE);
 			CASE(DURATION);
 			CASE(END);
