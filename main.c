@@ -331,7 +331,7 @@ static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
 		big_buf = calloc(1, sizeof(char) * D_HEIGHT * D_WIDTH * 3);
 	else
 		big_buf = buf;
-	char bg = LIGHT == (conf->colour != BW) ? 0xff : 0;
+	char bg = LIGHT ? 0xff : 0;
 	memset(big_buf, bg, sizeof(char) * D_HEIGHT * D_WIDTH * 3);
 	double (*info)[D_WIDTH][4] = calloc(1, sizeof(double) * D_HEIGHT * D_WIDTH * 4);
 
@@ -429,7 +429,7 @@ static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
 					double v = MIN(0xff, INTENSITY / DENSITY * info[i][j][0]);
 					for (int k = 0; k < 3; ++k) {
 						double a = 0xff * sqrt(v / 0xff);
-						a = LIGHT ? a : 1 - a;
+						a = LIGHT ? 1 - a : a;
 						big_buf[i][j][k] = (char)a;
 					}
 					break;
