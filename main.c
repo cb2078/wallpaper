@@ -676,7 +676,7 @@ static DWORD WINAPI write_video_callback(void *arg_)
 
 static void write_video(const char *params, int frames)
 {
-	struct config config_array[frames];
+	struct config *config_array = malloc(sizeof(struct config) * frames);
 	set_video_params(params, config_array, frames);
 	char buf[256];
 	snprintf(buf, 256,
@@ -696,6 +696,8 @@ static void write_video(const char *params, int frames)
 	struct config conf;
 	set_config(&conf, params);
 	write_attractor("images/out.png", &conf);
+
+	free(config_array);
 }
 
 static void video_params(coef c)
