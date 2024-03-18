@@ -467,11 +467,6 @@ static void render_image(struct config *conf, unsigned char *buf)
 #endif
 }
 
-static int time_ms(void)
-{
-	return (int)((double)clock() / CLOCKS_PER_SEC);
-}
-
 static void progress(int i, int max, time_t elapsed)
 {
 	double speed = (double)i / elapsed;
@@ -517,7 +512,7 @@ static DWORD WINAPI write_samples_callback(void *arg_)
 			memcpy(&SBUF(i * HEIGHT + k, j * WIDTH, 0), &BUF(k, 0, 0), sizeof(char) * WIDTH * 3);
 
 		int b = InterlockedIncrement((long *)&arg->thread_info.back);
-		progress(b, arg->thread_info.entry_count, time_ms() - arg->start);
+		progress(b, arg->thread_info.entry_count, time(NULL) - arg->start);
 	}
 
 	free(buf);
@@ -549,7 +544,7 @@ static int write_samples(char name[], struct config *config_array, int samples)
 	arg.w = w;
 	arg.h = h;
 	arg.buf = buf;
-	arg.start = time_ms();
+	arg.start = time(NULL);
 	run_jobs(write_samples_callback, (void *)&arg);
 	putchar('\n');
 
@@ -677,7 +672,7 @@ static DWORD WINAPI write_video_callback(void *arg_)
 			WaitOnAddress(&arg->thread_info.back, &undesired, sizeof(int), INFINITE);
 		fwrite(buf, sizeof(char) * HEIGHT * WIDTH * 3, 1, arg->pipe);
 		++arg->thread_info.back;
-		progress(arg->thread_info.back, arg->thread_info.entry_count, time_ms() - arg->start);
+		progress(arg->thread_info.back, arg->thread_info.entry_count, time(NULL) - arg->start);
 
 		// notify other threads when we're done
 		WakeByAddressAll((void *)&arg->thread_info.back);
@@ -701,11 +696,13 @@ static void write_video(const char *params, int frames)
 	arg.thread_info.entry_count = frames;
 	arg.config_array = config_array;
 	arg.pipe = pipe;
-	arg.start = time_ms();
+	arg.start = time(NULL);
 	run_jobs(write_video_callback, (void *)&arg);
 	putchar('\n');
+	printf("rendered in %lld seconds\n", time(NULL) - arg.start);
 
 	_pclose(pipe);
+	puts("wrote images/out.mp4");
 
 	// write a thumbnail
 	struct config conf;
