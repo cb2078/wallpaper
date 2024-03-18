@@ -197,7 +197,7 @@ static bool is_valid(coef c)
 
 static void random_config(struct config *conf)
 {
-	puts("finding attractor parameters");
+	printf("\rfinding attractor parameters");
 	conf->colour = COLOUR;
 	do {
 		for (int i = 0; i < 2; ++i)
@@ -602,6 +602,7 @@ static void sample_attractor(int samples)
 
 	for (int s = 0; s < samples; ++s)
 		random_config(&config_array[s]);
+	putchar('\n');
 
 	write_samples("samples", config_array, samples);
 	free(config_array);
@@ -836,7 +837,7 @@ int main(int argc, char **argv)
 				if (PARAMS)
 					load_config(config_array, &count);
 				else
-					random_config(&config_array[0]);
+					random_config(&config_array[0]), putchar('\n');
 				for (int i = 1; i < COLOUR_COUNT; ++i) {
 					memcpy(&config_array[i], &config_array[0], sizeof(struct config));
 					config_array[i].colour = (enum colour_type)i;
@@ -851,7 +852,7 @@ int main(int argc, char **argv)
 				write_attractors(config_array, count);
 			} else {
 				struct config conf;
-				random_config(&conf);
+				random_config(&conf); putchar('\n');
 				char buf[256];
 				str_c(conf.c, buf);
 				char name[256];
@@ -865,8 +866,7 @@ int main(int argc, char **argv)
 			if (PARAMS)
 				load_config(&conf, &count);
 			else
-				random_config(&conf);
-
+				random_config(&conf), putchar('\n');
 			video_params(conf.c);
 			char params[256];
 			str_c(conf.c, params);
