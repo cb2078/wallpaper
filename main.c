@@ -323,6 +323,12 @@ static void rgb1_to_rgb256(double rgb1[3], unsigned char rgb256[3])
 		rgb256[k] = (unsigned char)(rgb1[k] * 0xff);
 }
 
+static void inv(double rgb[3])
+{
+	for (int k = 0; k < 3; ++k)
+		rgb[k] = 1 - rgb[k];
+}
+
 #define BUF(i, j, k) buf[(i) * WIDTH * 3 + (j) * 3 + (k)]
 #define BIG_BUF(i, j, k) big_buf[(i) * D_WIDTH * 3 + (j) * 3 + (k)]
 #define INFO(i, j, k) info[(i) * D_WIDTH * 4 + (j) * 4 + (k)]
@@ -399,10 +405,10 @@ static void render_image(struct config *conf, unsigned char *buf)
 				{
 					double h = 180 + atan2(INFO(i, j, 1), INFO(i, j, 2)) * 180 / M_PI;
 					double s = 1;
-					double tmp[3];
-					hsv_to_rgb(h, s, v, tmp);
-					for (int k = 0; k < 3; ++k)
-						BIG_BUF(i, j, k) = (char)(0xff * (LIGHT ? 1 - tmp[k] : tmp[k]));
+					double rgb[3];
+					hsv_to_rgb(h, s, v, rgb);
+					if (LIGHT) inv(rgb);
+					rgb1_to_rgb256(rgb, &BIG_BUF(i, j, 0));
 					break;
 				}
 				case BW:
@@ -414,13 +420,12 @@ static void render_image(struct config *conf, unsigned char *buf)
 				case MIX:
 				case RGB:
 				{
-					double tmp[3];
-					for (int k = 0; k < 3; ++k) {
-						double a = MIN(1, INFO(i, j, k + 1) * INTENSITY / DENSITY/ 0xff);
-						tmp[k] = LIGHT ? 1 - a : a;
-					}
-					set_brightness(v, tmp, tmp);
-					rgb1_to_rgb256(tmp, &BIG_BUF(i, j, 0));
+					double rgb[3];
+					for (int k = 0; k < 3; ++k)
+						rgb[k] = MIN(1, INFO(i, j, k + 1) * INTENSITY / DENSITY/ 0xff);
+					set_brightness(v, rgb, rgb);
+					if (LIGHT) inv(rgb);
+					rgb1_to_rgb256(rgb, &BIG_BUF(i, j, 0));
 					break;
 				}
 				// gradient map
