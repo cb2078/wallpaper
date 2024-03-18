@@ -815,10 +815,8 @@ int main(int argc, char **argv)
 
 	// parse and set the options
 	assert(argc % 2 == 0);
-	for (int i = 2; i < argc;) {
+	for (int i = 2; i < argc; i += 2)
 		parse_option(mode, argv[i], argv[i + 1]);
-		i += 2;
-	}
 	ITERATIONS = WIDTH * HEIGHT * QUALITY;
 
 	switch (mode) {

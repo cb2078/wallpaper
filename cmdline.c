@@ -109,7 +109,7 @@ struct option options[] = {
 	[OP_COLOUR_PREVIEW] = {
 		.str = "colour_preview",
 		.type = TY_INT,
-		.doc = "make preview of a fractor in all colours",
+		.doc = "make preview of a fractal in all colours",
 		.val.d = 0,
 		.conflicts = OP_PREVIEW,
 		.mode = IMAGE,
@@ -155,7 +155,7 @@ struct option options[] = {
 	[OP_LIGHT] = {
 		.str = "light",
 		.type = TY_INT,
-		.doc = "render in light mode or dark mode (default)",
+		.doc = "render in light mode, default: dark mode",
 		.val.d = 0,
 	},
 	[OP_PARAMS] = {
@@ -184,7 +184,7 @@ struct option options[] = {
 	[OP_STRETCH] = {
 		.str = "stretch",
 		.type = TY_INT,
-		.doc = "weather to stretch the fractal",
+		.doc = "weather to stretch the fractal, default: 0",
 		.val.d = 0,
 	},
 	[OP_TYPE] = {
@@ -262,7 +262,7 @@ static void help_mode(char *name, enum option_mode mode)
 		}
 		c += printf("[--%s %s] ", options[i].str, type_str(options[i].type));
 	}
-	printf("[options]\n");
+	printf("[common options]\n");
 }
 
 static bool has_conflicts(struct option *o)
@@ -320,20 +320,32 @@ static void val_str(struct option *o, char buf[256])
 	}
 }
 
-static void help(void)
+static void help_option(enum option_mode mode)
 {
+	switch (mode) {
+		case IMAGE:
+			printf("\nimage options\n");
+			break;
+		case VIDEO:
+			printf("\nvideo options\n");
+			break;
+		default:
+			printf("\ncommon options\n");
+			break;
+	}
+
 	int indent = 0;
 	for (int i = 0; i < LENGTH(options); ++i) {
+		if (options[i].mode != mode)
+			continue;
 		char buf[256];
 		int c = snprintf(buf, 256, "  --%s %s", options[i].str, type_str(options[i].type));
 		indent = MAX(c, indent);
 	}
 
-	printf("usage\n");
-	help_mode("attractor image", IMAGE);
-	help_mode("attractor video", VIDEO);
-	printf("\noptions\n");
 	for (int i = 0; i < LENGTH(options); ++i) {
+		if (options[i].mode != mode)
+			continue;
 		int c = printf("  --%s %s", options[i].str, type_str(options[i].type));
 		printf("%*s  %s", indent - c, "", has_doc(&options[i]) ? options[i].doc : "");
 		if (has_default(&options[i])) {
@@ -350,6 +362,17 @@ static void help(void)
 		}
 		putchar('\n');
 	}
+}
+
+static void help(void)
+{
+	printf("usage\n");
+	help_mode("attractor image", IMAGE);
+	help_mode("attractor video", VIDEO);
+
+	help_option(IMAGE);
+	help_option(VIDEO);
+	help_option(0); // common options
 }
 
 static int parse_flag(char *flag)
