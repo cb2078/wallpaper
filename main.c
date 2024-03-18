@@ -197,6 +197,7 @@ static bool is_valid(coef c)
 
 static void random_config(struct config *conf)
 {
+	puts("finding attractor parameters");
 	conf->colour = COLOUR;
 	do {
 		for (int i = 0; i < 2; ++i)
@@ -482,9 +483,9 @@ static int write_image(char *name, int width, int height, void *buf)
 {
 	int result = stbi_write_png(name, width, height, 3, buf, width * sizeof(char) * 3);
 	if (!result)
-		printf("Failed to write %s\n", name);
+		printf("failed to write %s\n", name);
 	else
-		printf("%s\n", name);
+		printf("wrote %s\n", name);
 	return result;
 }
 
@@ -709,13 +710,15 @@ static void write_video(const char *params, int frames)
 	// write a thumbnail
 	struct config conf;
 	set_config(&conf, params);
-	write_attractor("images/out.png", &conf);
+	write_attractor("images/thumbnail.png", &conf);
 
 	free(config_array);
 }
 
 static void video_params(coef c)
 {
+	puts("finding video parameters");
+
 	if (!is_set(OP_COEFFICIENT)) {
 		set(OP_COEFFICIENT);
 		CI = rand() % 2;
