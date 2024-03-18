@@ -31,13 +31,15 @@ double gradients[NUM_GRADIENTS][GN][3] = {
 #if 1
 static inline void set_brightness(double desired, double rgb1[3], double r[3])
 {
-	memcpy(r, rgb1, sizeof(double) * 3);
 	double dot = rgb1[0] * rgb1[0] + rgb1[1] * rgb1[1] + rgb1[2] * rgb1[2];
 	double mag = sqrt(dot);
-	for (int k = 0; k < 3; ++k) {
-		r[k] = r[k] / mag * sqrt(pow(desired, 2) *3);
-		if (r[k] > 1)
-			r[k] = 1;
-	}
+	if (mag == 0)
+		memcpy(r, rgb1, sizeof(double) * 3);
+	else
+		for (int k = 0; k < 3; ++k) {
+			r[k] = r[k] / mag * sqrt(pow(desired, 2) *3);
+			if (r[k] > 1)
+				r[k] = 1;
+		}
 }
 #endif

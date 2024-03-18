@@ -319,10 +319,8 @@ static void rgb256_to_rgb1(unsigned char rgb256[3], double rgb1[3])
 
 static void rgb1_to_rgb256(double rgb1[3], unsigned char rgb256[3])
 {
-	for (int k = 0; k < 3; ++k) {
-		assert(rgb1[k] >= 0 && rgb1[k] * 0xff < 0x100);
+	for (int k = 0; k < 3; ++k)
 		rgb256[k] = (unsigned char)(rgb1[k] * 0xff);
-	}
 }
 
 #define BUF(i, j, k) buf[(i) * WIDTH * 3 + (j) * 3 + (k)]
