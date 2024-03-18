@@ -260,7 +260,7 @@ static void help_mode(char *name, enum option_mode mode)
 			printf("\n");
 			c = printf("    ");
 		}
-		c += printf("[--%s %s] ", options[i].str, type_str(options[i].type));
+		c += printf("[-%s %s] ", options[i].str, type_str(options[i].type));
 	}
 	printf("[common options]\n");
 }
@@ -339,14 +339,14 @@ static void help_option(enum option_mode mode)
 		if (options[i].mode != mode)
 			continue;
 		char buf[256];
-		int c = snprintf(buf, 256, "  --%s %s", options[i].str, type_str(options[i].type));
+		int c = snprintf(buf, 256, "  -%s %s", options[i].str, type_str(options[i].type));
 		indent = MAX(c, indent);
 	}
 
 	for (int i = 0; i < LENGTH(options); ++i) {
 		if (options[i].mode != mode)
 			continue;
-		int c = printf("  --%s %s", options[i].str, type_str(options[i].type));
+		int c = printf("  -%s %s", options[i].str, type_str(options[i].type));
 		printf("%*s  %s", indent - c, "", has_doc(&options[i]) ? options[i].doc : "");
 		if (has_default(&options[i])) {
 			if (has_doc(&options[i]))
@@ -358,7 +358,7 @@ static void help_option(enum option_mode mode)
 		if (has_conflicts(&options[i])) {
 			if (has_default(&options[i]) || has_doc(&options[i]))
 				printf(", ");
-			printf("conficts with \"--%s\"", options[options[i].conflicts].str);
+			printf("conficts with \"-%s\"", options[options[i].conflicts].str);
 		}
 		putchar('\n');
 	}
@@ -503,7 +503,7 @@ static void print_values(int mode)
 			continue;
 		char buf[256];
 		val_str(&options[i], buf);
-		printf(" --%s %s", options[i].str, buf);
+		printf(" -%s %s", options[i].str, buf);
 	}
 	putchar('\n');
 }
