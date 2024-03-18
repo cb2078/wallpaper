@@ -672,8 +672,8 @@ static void write_video(const char *params, int frames)
 	set_video_params(params, config_array, frames);
 	char buf[256];
 	snprintf(buf, 256,
-	         "ffmpeg.exe -y -f rawvideo -pix_fmt rgb24 -s %dx%d -r %d -i - "
-	         " -c:v libx264 -profile:v high444 -crf 17 images/out.mp4", WIDTH, HEIGHT, FPS);
+	         "ffmpeg.exe -loglevel error -y -f rawvideo -pix_fmt rgb24 -s %dx%d -r %d -i - "
+	         " -c:v libx264 -qp 0 images/out.mp4", WIDTH, HEIGHT, FPS);
 	FILE *pipe = _popen(buf, "wb");
 
 	struct write_video_arg arg = {0};
