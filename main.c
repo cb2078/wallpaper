@@ -354,22 +354,6 @@ static void render_image(struct config *conf, unsigned char *buf)
 			y_scale = x_scale;
 	}
 
-#if 0
-	for (int i = 0; i < D_HEIGHT; ++i)
-		for (int j = 0; j < D_WIDTH; ++j) {
-			vec x[2];
-			x[!o] = (double)i / D_HEIGHT * 4 - 2;
-			x[ o] = (double)j / D_WIDTH * 4 - 2;
-			unsigned n = 0;
-			for (; n < 1000; ++n) {
-				iteration(x);
-				if (fabs(x[0]) > 1e10 || fabs(x[0]) < 1e-10 || fabs(x[1]) > 1e10 || fabs(x[1]) < 1e-10)
-					break;
-			}
-			big_buf[i][j][0] = big_buf[i][j][1] = big_buf[i][j][2] = (char)(0x7 * n);
-		}
-#endif
-
 	unsigned count = 0;
 	for (unsigned n = CUTOFF; n < ITERATIONS; ++n) {
 		vec x_last;
