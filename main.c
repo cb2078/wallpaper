@@ -17,7 +17,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-unsigned THREAD_COUNT;
+int THREAD_COUNT;
 
 struct work_queue_info {
 	volatile int next_entry;
@@ -25,10 +25,10 @@ struct work_queue_info {
 	volatile int back;
 };
 
-static void run_jobs(DWORD WINAPI (*callback)(void *), void *arg)
+static void run_jobs(DWORD WINAPI callback(void *), void *arg)
 {
 	// create threads
-	HANDLE threads[THREAD_COUNT];
+	HANDLE *threads = malloc(sizeof(HANDLE) * THREAD_COUNT);
 	for (int i = 0; i < THREAD_COUNT; ++i)
 		threads[i] = CreateThread(0, 0, callback, arg, 0, 0);
 
@@ -38,6 +38,7 @@ static void run_jobs(DWORD WINAPI (*callback)(void *), void *arg)
 	// close the thread handless
 	for (int i = 0; i < THREAD_COUNT; ++i)
 		CloseHandle(threads[i]);
+	free(threads);
 }
 
 unsigned CUTOFF = 10000;
@@ -310,36 +311,37 @@ static void rgb_to_hsl(double rgb[3], double *h, double *s, double *l)
 	hsv_to_hsl(sv, v, s, l);
 }
 
-static void rgb256_to_rgb1(char rgb256[3], double rgb1[3])
+static void rgb256_to_rgb1(unsigned char rgb256[3], double rgb1[3])
 {
 	for (int k = 0; k < 3; ++k)
 		rgb1[k] = (double)rgb256[k] / 0xff;
 }
 
-static void rgb1_to_rgb256(double rgb1[3], char rgb256[3])
+static void rgb1_to_rgb256(double rgb1[3], unsigned char rgb256[3])
 {
 	for (int k = 0; k < 3; ++k) {
 		assert(rgb1[k] >= 0 && rgb1[k] * 0xff < 0x100);
-		rgb256[k] = (char)(rgb1[k] * 0xff);
+		rgb256[k] = (unsigned char)(rgb1[k] * 0xff);
 	}
 }
 
-static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
+#define BUF(i, j, k) buf[(i) * WIDTH * 3 + (j) * 3 + (k)]
+#define BIG_BUF(i, j, k) big_buf[(i) * D_WIDTH * 3 + (j) * 3 + (k)]
+#define INFO(i, j, k) info[(i) * D_WIDTH * 4 + (j) * 4 + (k)]
+
+static void render_image(struct config *conf, unsigned char *buf)
 {
-	unsigned D_WIDTH = WIDTH * DOWNSCALE, D_HEIGHT = HEIGHT * DOWNSCALE;
-	char (*big_buf)[WIDTH * DOWNSCALE][3] = NULL;
-	if (DOWNSCALE > 1)
-		big_buf = calloc(1, sizeof(char) * D_HEIGHT * D_WIDTH * 3);
-	else
-		big_buf = buf;
-	char bg = LIGHT ? 0xff : 0;
+	unsigned char bg = LIGHT ? 0xff : 0;
+	int D_WIDTH = WIDTH * DOWNSCALE, D_HEIGHT = HEIGHT * DOWNSCALE;
+	unsigned char *big_buf = DOWNSCALE > 1 ?
+		malloc(sizeof(char) * D_HEIGHT * D_WIDTH * 3) :
+		buf;
 	memset(big_buf, bg, sizeof(char) * D_HEIGHT * D_WIDTH * 3);
-	double (*info)[D_WIDTH][4] = calloc(1, sizeof(double) * D_HEIGHT * D_WIDTH * 4);
+	double *info = calloc(1, sizeof(double) * D_HEIGHT * D_WIDTH * 4);
 
 	vec x = {0};
 	for (unsigned n = 0; n < CUTOFF; ++n)
 		iteration(conf->c, x);
-	vec v = {0};
 
 	double range[2] = {conf->x_max[0] - conf->x_min[0], conf->x_max[1] - conf->x_min[1]};
 	int o = range[0] < range[1];
@@ -371,6 +373,7 @@ static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
 	unsigned count = 0;
 	for (unsigned n = CUTOFF; n < ITERATIONS; ++n) {
 		vec x_last;
+		vec v;
 		for (int i = 0; i < 2; ++i)
 			x_last[i] = x[i];
 		iteration(conf->c, x);
@@ -382,21 +385,21 @@ static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
 		if (i < 0 || i >= D_HEIGHT) continue;
 		if (j < 0 || j >= D_WIDTH) continue;
 
-		count += info[i][j][0] == 0;
-		info[i][j][0] += 1;
+		count += INFO(i, j, 0) == 0;
+		INFO(i, j, 0) += 1;
 		switch (conf->colour) {
 			case HSV:
-				info[i][j][1] += v[1] / conf->v_max[1];
-				info[i][j][2] += v[0] / conf->v_max[0];
+				INFO(i, j, 1) += v[1] / conf->v_max[1];
+				INFO(i, j, 2) += v[0] / conf->v_max[0];
 				break;
 			case MIX:
 				for (int k = 0; k < 3; ++k)
-					info[i][j][k + 1] += fabs(dot(u[k], v)) / sqrt(dot(conf->v_max, conf->v_max));
+					INFO(i, j, k + 1) += fabs(dot(u[k], v)) / sqrt(dot(conf->v_max, conf->v_max));
 				break;
 			case RGB:
-				info[i][j][1] += MAX(0, v[0] / conf->v_max[0]);
-				info[i][j][2 + LIGHT] += MAX(0, -v[0] / conf->v_max[0]);
-				info[i][j][3 - LIGHT] += fabs(v[1]) / conf->v_max[1];
+				INFO(i, j, 1) += MAX(0, v[0] / conf->v_max[0]);
+				INFO(i, j, 2 + LIGHT) += MAX(0, -v[0] / conf->v_max[0]);
+				INFO(i, j, 3 - LIGHT) += fabs(v[1]) / conf->v_max[1];
 				break;
 			default:
 				break;
@@ -406,24 +409,24 @@ static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
 
 	for (int i = 0; i < D_HEIGHT; ++i)
 		for (int j = 0; j < D_WIDTH; ++j) {
-			if (info[i][j][0] == 0)
+			if (INFO(i, j, 0) == 0)
 				continue;
-			double v = MIN(1, INTENSITY / DENSITY * info[i][j][0] / 0xff); v = sqrt(v);
+			double v = MIN(1, INTENSITY / DENSITY * INFO(i, j, 0) / 0xff); v = sqrt(v);
 			switch (conf->colour) {
 				case HSV:
 				{
-					double h = 180 + (atan2(info[i][j][1], info[i][j][2]) * 180 / M_PI);
+					double h = 180 + atan2(INFO(i, j, 1), INFO(i, j, 2)) * 180 / M_PI;
 					double s = 1;
 					double tmp[3];
 					hsv_to_rgb(h, s, v, tmp);
 					for (int k = 0; k < 3; ++k)
-						big_buf[i][j][k] = (char)(0xff * (LIGHT ? 1 - tmp[k] : tmp[k]));
+						BIG_BUF(i, j, k) = (char)(0xff * (LIGHT ? 1 - tmp[k] : tmp[k]));
 					break;
 				}
 				case BW:
 				{
 					for (int k = 0; k < 3; ++k)
-						big_buf[i][j][k] = (char)((LIGHT ? 1 - v : v) * 0xff);
+						BIG_BUF(i, j, k) = (char)((LIGHT ? 1 - v : v) * 0xff);
 					break;
 				}
 				case MIX:
@@ -431,22 +434,22 @@ static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
 				{
 					double tmp[3];
 					for (int k = 0; k < 3; ++k) {
-						double a = MIN(1, info[i][j][k + 1] * INTENSITY / DENSITY/ 0xff);
+						double a = MIN(1, INFO(i, j, k + 1) * INTENSITY / DENSITY/ 0xff);
 						tmp[k] = LIGHT ? 1 - a : a;
 					}
 					set_brightness(v, tmp, tmp);
-					rgb1_to_rgb256(tmp, big_buf[i][j]);
+					rgb1_to_rgb256(tmp, &BIG_BUF(i, j, 0));
 					break;
 				}
 				// gradient map
 				default:
 				{
-					double x = (LIGHT ? 1 - v : v) * (GN - 1);
-					double t = fmod(x, 1);
-					int l = floor(x), r = ceil(x);
+					double g = (LIGHT ? 1 - v : v) * (GN - 1);
+					double t = fmod(g, 1);
+					int l = (int)floor(g), r = (int)ceil(g);
 					for (int k = 0; k < 3; ++k) {
 						double a = t * gradients[conf->colour][r][k] + (1 - t) * gradients[conf->colour][l][k];
-						big_buf[i][j][k] = (char)a;
+						BIG_BUF(i, j, k) = (char)a;
 					}
 					break;
 				}
@@ -470,7 +473,7 @@ static void render_image(struct config *conf, char buf[HEIGHT][WIDTH][3])
 		int r = ceil(x);
 		for (int i = 0; i < 20; ++i)
 			for (int k = 0; k < 3; ++k)
-				buf[i][j][k] = (char)((1 - t) * gradients[conf->colour][l][k] + t * gradients[conf->colour][r][k]);
+				BUF(i, j, k) = (char)((1 - t) * gradients[conf->colour][l][k] + t * gradients[conf->colour][r][k]);
 
 	}
 #endif
@@ -494,11 +497,11 @@ struct write_samples_arg {
 	char *buf;
 };
 
+
 static DWORD WINAPI write_samples_callback(void *arg_)
 {
 	struct write_samples_arg *arg = (struct write_samples_arg *)arg_;
-	char (*img)[WIDTH][3] = malloc(sizeof(char) * HEIGHT * WIDTH * 3);
-#define BUF_AT(i, j, k) arg->buf[(i) * arg->w * 3 + (j) * 3 + (k)]
+	unsigned char *buf = malloc(sizeof(char) * HEIGHT * WIDTH * 3);
 
 	while (arg->thread_info.next_entry < arg->thread_info.entry_count) {
 		int s = InterlockedIncrement((long *)&arg->thread_info.next_entry) - 1;
@@ -507,13 +510,14 @@ static DWORD WINAPI write_samples_callback(void *arg_)
 
 		int i = s / arg->n;
 		int j = s % arg->n;
-		render_image(&arg->config_array[s], img);
+		render_image(&arg->config_array[s], buf);
 		for (int k = 0; k < HEIGHT; ++k)
-			memcpy(&BUF_AT(i * HEIGHT + k, j * WIDTH, 0), &img[k][0][0], sizeof(char) * WIDTH * 3);
+#define SBUF(i, j, k) arg->buf[(i) * arg->w * 3 + (j) * 3 + (k)]
+			memcpy(&SBUF(i * HEIGHT + k, j * WIDTH, 0), &BUF(k, 0, 0), sizeof(char) * WIDTH * 3);
 		printf("%3d\n", 1 + s);
 	}
 
-	free(img);
+	free(buf);
 	return 0;
 }
 
@@ -528,11 +532,10 @@ static int write_samples(char name[], struct config *config_array, int samples)
 	char txt[256];
 	snprintf(txt, 256, "images/%s.txt", name);
 	FILE *f = fopen(txt, "w");
-	// TODO do this in the thread function
 	for (int s = 0; s < samples; ++s) {
-		char name[256];
-		str_c(config_array[s].c, name);
-		fprintf(f, "%s # %d\n", name, 1 + s);
+		char params[256];
+		str_c(config_array[s].c, params);
+		fprintf(f, "%s # %d\n", params, 1 + s);
 	}
 	fclose(f);
 
@@ -554,7 +557,7 @@ static int write_samples(char name[], struct config *config_array, int samples)
 
 static void write_attractor(char *name, struct config *conf)
 {
-	char (*buf)[WIDTH][3] = malloc(sizeof(char) * HEIGHT * WIDTH * 3);
+	unsigned char *buf = malloc(sizeof(char) * HEIGHT * WIDTH * 3);
 	render_image(conf, buf);
 	write_image(name, WIDTH, HEIGHT, buf);
 	free(buf);
@@ -568,7 +571,7 @@ struct write_attractors_arg {
 static DWORD WINAPI write_attractors_callback(void *arg_)
 {
 	struct write_attractors_arg *arg = (struct write_attractors_arg *)arg_;
-	char (*buf)[WIDTH][3] = malloc(sizeof(char) * HEIGHT * WIDTH * 3);
+	unsigned char *buf = malloc(sizeof(char) * HEIGHT * WIDTH * 3);
 
 	while (arg->thread_info.next_entry < arg->thread_info.entry_count) {
 		int s = InterlockedIncrement((long *)&arg->thread_info.next_entry) - 1;
@@ -638,9 +641,10 @@ static void set_video_params(const char *params, struct config *config_array, in
 
 static void video_preview(const char *params, int samples)
 {
-	struct config config_array[samples];
+	struct config *config_array = malloc(sizeof(struct config) * samples);
 	set_video_params(params, config_array, samples);
 	write_samples("preview", config_array, samples);
+	free(config_array);
 }
 
 struct write_video_arg {
@@ -652,7 +656,7 @@ struct write_video_arg {
 static DWORD WINAPI write_video_callback(void *arg_)
 {
 	struct write_video_arg *arg = (struct write_video_arg *)arg_;
-	char (*buf)[WIDTH][3] = malloc(sizeof(char) * HEIGHT * WIDTH * 3);
+	unsigned char *buf = malloc(sizeof(char) * HEIGHT * WIDTH * 3);
 
 	while (arg->thread_info.next_entry < arg->thread_info.entry_count) {
 		int s = InterlockedIncrement((long *)&arg->thread_info.next_entry) - 1;
@@ -771,7 +775,7 @@ int main(int argc, char **argv)
 				gradients[g][i][k] = tmp[k] * 0xff;
 		}
 
-	srand(time(NULL));
+	srand((unsigned int)time(NULL));
 
 	// thread count
 	{

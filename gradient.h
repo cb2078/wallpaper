@@ -4,7 +4,7 @@ enum gradient {
 	NUM_GRADIENTS,
 };
 
-const int GN = 8;
+#define GN 8
 
 double gradients[NUM_GRADIENTS][GN][3] = {
 	// https://www.kennethmoreland.com/color-advice/

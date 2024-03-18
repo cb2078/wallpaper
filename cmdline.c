@@ -244,6 +244,9 @@ static char *type_str(enum option_type type)
 		case TY_STRING:
 		case TY_COEFFICIENT:
 			return "<string>";
+		default:
+			fprintf(stderr, "internal error\n");
+			exit(1);
 	}
 }
 
