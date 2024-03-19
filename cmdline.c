@@ -92,6 +92,7 @@ struct option options[] = {
 		.str = "border",
 		.type = TY_DOUBLE,
 		.val.f = 0.05f,
+		.set = true,
 	},
 	[OP_COEFFICIENT] = {
 		.str = "coefficient",
@@ -105,6 +106,7 @@ struct option options[] = {
 		.doc = "how to colour the attractor",
 		.val.d = BW,
 		.conflicts = OP_COLOUR,
+		.set = true,
 	},
 	[OP_COLOUR_PREVIEW] = {
 		.str = "colour_preview",
@@ -119,6 +121,7 @@ struct option options[] = {
 		.type = TY_INT,
 		.doc = "downscale from an image <downscale> times larger",
 		.val.d = 2,
+		.set = true,
 	},
 	[OP_DURATION] = {
 		.str = "duration",
@@ -127,6 +130,7 @@ struct option options[] = {
 		.val.d = 40,
 		.doc = "duration in seconds",
 		.conflicts = OP_PREVIEW,
+		.set = true,
 	},
 	[OP_END] = {
 		.str = "end",
@@ -140,23 +144,27 @@ struct option options[] = {
 		.type = TY_INT,
 		.val.d = 24,
 		.conflicts = OP_PREVIEW,
+		.set = true,
 	},
 	[OP_HEIGHT] = {
 		.str = "height",
 		.type = TY_INT,
 		.val.d = 720,
+		.set = true,
 	},
 	[OP_INTENSITY] = {
 		.str = "intensity",
 		.type = TY_DOUBLE,
 		.val.f = 50,
 		.doc = "how bright the iterations make each pixel",
+		.set = true,
 	},
 	[OP_LIGHT] = {
 		.str = "light",
 		.type = TY_INT,
-		.doc = "render in light mode, default: dark mode",
+		.doc = "render in light mode",
 		.val.d = 0,
+		.set = true,
 	},
 	[OP_PARAMS] = {
 		.str = "params",
@@ -174,6 +182,7 @@ struct option options[] = {
 		.type = TY_INT,
 		.val.d = 25,
 		.doc = "how many iterations to do per pixel",
+		.set = true,
 	},
 	[OP_START] = {
 		.str = "start",
@@ -184,17 +193,20 @@ struct option options[] = {
 	[OP_STRETCH] = {
 		.str = "stretch",
 		.type = TY_INT,
-		.doc = "weather to stretch the fractal, default: 0",
+		.doc = "weather to stretch the fractal",
 		.val.d = 0,
+		.set = true,
 	},
 	[OP_TYPE] = {
 		.str = "type",
 		.type = TY_ATTRACTOR,
+		.set = true,
 	},
 	[OP_WIDTH] = {
 		.str = "width",
 		.type = TY_INT,
 		.val.d = 1280,
+		.set = true,
 	},
 };
 
@@ -202,8 +214,8 @@ struct option options[] = {
 int CI, CJ, CN = 6;
 #define COLOUR         options[OP_COLOUR].val.d
 #define COLOUR_PREVIEW options[OP_COLOUR_PREVIEW].val.d
-#define DURATION       options[OP_DURATION].val.d
 #define DOWNSCALE      options[OP_DOWNSCALE].val.d
+#define DURATION       options[OP_DURATION].val.d
 #define END            options[OP_END].val.f
 #define FPS            options[OP_FPS].val.d
 #define HEIGHT         options[OP_HEIGHT].val.d
@@ -212,9 +224,9 @@ int CI, CJ, CN = 6;
 #define PARAMS         options[OP_PARAMS].val.s
 #define PREVIEW        options[OP_PREVIEW].val.d
 #define QUALITY        options[OP_QUALITY].val.d
-#define TYPE           options[OP_TYPE].val.d
 #define START          options[OP_START].val.f
 #define STRETCH        options[OP_STRETCH].val.d
+#define TYPE           options[OP_TYPE].val.d
 #define WIDTH          options[OP_WIDTH].val.d
 
 static void enum_str(char buf[256], char *map[], int map_len)
@@ -277,21 +289,7 @@ static bool has_doc(struct option *o)
 
 static bool has_default(struct option *o)
 {
-	switch (o->type) {
-		case TY_INT:
-			return 0 != o->val.d;
-		case TY_DOUBLE:
-			return 0 != o->val.f;
-		case TY_ENUM:
-			return true;
-		case TY_STRING:
-			return NULL != o->val.s;
-		case TY_COEFFICIENT:
-			return false;
-		case TY_ATTRACTOR:
-			return true;
-	}
-	exit(1);
+	return o->set;
 }
 
 static void val_str(struct option *o, char buf[256])
@@ -493,21 +491,6 @@ static void parse_option(int mode, char *flag, char *val)
 		options[o].set = true;
 }
 
-static void print_values(int mode)
-{
-	printf("made with");
-	for (int i = 0; i < LENGTH(options); ++i) {
-		if (!options[i].set && !has_default(&options[i]))
-			continue;
-		if (options[i].mode && options[i].mode != mode)
-			continue;
-		char buf[256];
-		val_str(&options[i], buf);
-		printf(" -%s %s", options[i].str, buf);
-	}
-	putchar('\n');
-}
-
 static void set(enum option_name o)
 {
 	options[o].set = true;
@@ -515,5 +498,20 @@ static void set(enum option_name o)
 
 static bool is_set(enum option_name o)
 {
-	return options[o].set;
+	return has_default(&options[o]);
+}
+
+static void print_values(int mode)
+{
+	printf("made with");
+	for (int i = 0; i < LENGTH(options); ++i) {
+		if (options[i].mode && options[i].mode != mode)
+			continue;
+		if (!is_set(i))
+			continue;
+		char buf[256];
+		val_str(&options[i], buf);
+		printf(" -%s %s", options[i].str, buf);
+	}
+	putchar('\n');
 }
