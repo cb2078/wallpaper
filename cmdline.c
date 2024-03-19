@@ -42,6 +42,7 @@ enum colour_type {
 	PLA,
 	BW,
 	HSV,
+	HSL,
 	RGB,
 	MIX,
 	COLOUR_COUNT,
@@ -55,6 +56,7 @@ char *colour_map[] = {
 	[PLA] = "PLA",
 	[BW] = "BW",
 	[HSV] = "HSV",
+	[HSL] = "HSL",
 	[RGB] = "RGB",
 	[MIX] = "MIX",
 };

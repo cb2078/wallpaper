@@ -385,6 +385,7 @@ static void render_image(struct config *conf, unsigned char *buf)
 		INFO(i, j, 0) += 1;
 		switch (conf->colour) {
 			case HSV:
+			case HSL:
 				vec w = {v[1] / conf->v_max[1], v[0] / conf->v_max[0]};
 				double mm = mag(w);
 				INFO(i, j, 1) += w[1] / mm;
@@ -413,11 +414,12 @@ static void render_image(struct config *conf, unsigned char *buf)
 			double v = MIN(1, INTENSITY / DENSITY * INFO(i, j, 0) / 0xff); v = sqrt(v);
 			switch (conf->colour) {
 				case HSV:
+				case HSL:
 				{
 					double h = 180 + atan2(INFO(i, j, 1), INFO(i, j, 2)) * 180 / M_PI;
 					double s = mag((double *)&INFO(i, j, 1)) / INFO(i, j, 0) / m;
 					double rgb[3];
-					hsv_to_rgb(h, s, v, rgb);
+					(conf->colour == HSV ? hsv_to_rgb : hsl_to_rgb)(h, s, v, rgb);
 					if (LIGHT) inv(rgb);
 					rgb1_to_rgb256(rgb, &BIG_BUF(i, j, 0));
 					break;
