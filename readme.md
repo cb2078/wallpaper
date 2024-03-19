@@ -35,7 +35,7 @@ common options
   -width <int>                 default: 1280
 
 enums
-  <colour enum>          KIN | INF | BLA | VID | PLA | BW | HSV | HSL | RGB | MIX
+  <colour enum>          INF | BLA | VID | BW | HSV | HSL | RGB | MIX
   <attractor type enum>  POLY | TRIG | SAW | TRI
 ```
 

@@ -35,11 +35,9 @@ enum option_type {
 };
 
 enum colour_type {
-	KIN,
 	INF,
 	BLA,
 	VID,
-	PLA,
 	BW,
 	HSV,
 	HSL,
@@ -49,11 +47,9 @@ enum colour_type {
 };
 
 char *colour_map[] = {
-	[KIN] = "KIN",
 	[INF] = "INF",
 	[BLA] = "BLA",
 	[VID] = "VID",
-	[PLA] = "PLA",
 	[BW] = "BW",
 	[HSV] = "HSV",
 	[HSL] = "HSL",
