@@ -34,3 +34,7 @@ common options
   -type (POLY|TRIG|SAW|TRI)                     default: POLY
   -width <int>                                  default: 1280
 ```
+
+<p align="center">
+<img src="example.png"/>
+</p>
