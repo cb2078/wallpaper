@@ -109,7 +109,7 @@ struct option options[] = {
 		.set = true,
 	},
 	[OP_COLOUR_PREVIEW] = {
-		.str = "colour_preview",
+		.str = "colour-preview",
 		.type = TY_INT,
 		.doc = "make preview of a fractal in all colours",
 		.val.d = 0,
