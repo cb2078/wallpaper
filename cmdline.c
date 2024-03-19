@@ -107,7 +107,6 @@ struct option options[] = {
 		.doc = "how to colour the attractor",
 		.val.d = BW,
 		.conflicts = OP_COLOUR,
-		.set = true,
 	},
 	[OP_COLOUR_PREVIEW] = {
 		.str = "colour-preview",

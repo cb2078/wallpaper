@@ -22,7 +22,7 @@ video options
 
 common options
   -border <float>              default: 0.050
-  -colour <colour enum>        how to colour the attractor, default: BW, conflicts with -colour
+  -colour <colour enum>        how to colour the attractor, conflicts with -colour
   -downscale <int>             downscale from an image <downscale> times larger, default: 1
   -height <int>                default: 720
   -intensity <float>           how bright the iterations make each pixel, default: 50.000
