@@ -365,7 +365,6 @@ static void render_image(struct config *conf, unsigned char *buf)
 			y_scale = x_scale;
 	}
 
-	double m = 0;
 	unsigned count = 0;
 	for (unsigned n = CUTOFF; n < ITERATIONS; ++n) {
 		vec x_last;
@@ -387,10 +386,9 @@ static void render_image(struct config *conf, unsigned char *buf)
 			case HSV:
 			case HSL:
 				vec w = {v[1] / conf->v_max[1], v[0] / conf->v_max[0]};
-				double mm = mag(w);
-				INFO(i, j, 1) += w[1] / mm;
-				INFO(i, j, 2) += w[0] / mm;
-				m = MAX(m, mag((double *)&INFO(i, j, 1)) / INFO(i, j, 0));
+				double m = mag(w);
+				INFO(i, j, 1) += w[1] / m;
+				INFO(i, j, 2) += w[0] / m;
 				break;
 			case MIX:
 				for (int k = 0; k < 3; ++k)
@@ -411,13 +409,15 @@ static void render_image(struct config *conf, unsigned char *buf)
 		for (int j = 0; j < D_WIDTH; ++j) {
 			if (INFO(i, j, 0) == 0)
 				continue;
-			double v = MIN(1, INTENSITY / DENSITY * INFO(i, j, 0) / 0xff); v = sqrt(v);
+			double v = INTENSITY / DENSITY * INFO(i, j, 0) / 0xff;
+			v = MIN(1, conf->colour == HSV ? v * 2 : v);
+			v = sqrt(v);
 			switch (conf->colour) {
 				case HSV:
 				case HSL:
 				{
 					double h = 180 + atan2(INFO(i, j, 1), INFO(i, j, 2)) * 180 / M_PI;
-					double s = mag((double *)&INFO(i, j, 1)) / INFO(i, j, 0) / m;
+					double s = mag((double *)&INFO(i, j, 1)) / INFO(i, j, 0);
 					double rgb[3];
 					(conf->colour == HSV ? hsv_to_rgb : hsl_to_rgb)(h, s, v, rgb);
 					if (LIGHT) inv(rgb);
