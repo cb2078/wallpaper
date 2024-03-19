@@ -178,7 +178,7 @@ struct option options[] = {
 	[OP_PARAMS] = {
 		.str = "params",
 		.type = TY_STRING,
-		.doc = "file containing lines of 12 space separated floats",
+		.doc = "file containing parameters",
 		.conflicts = OP_PREVIEW,
 	},
 	[OP_PREVIEW] = {
@@ -241,11 +241,10 @@ int CI, CJ, CN = 6;
 
 static void enum_str(char buf[256], char *map[], int map_len)
 {
-	int c;
-	c = snprintf(buf, 256, "(");
+	int c = 0;
 	for (int i = 0; i < map_len; ++i)
-		c += snprintf(buf + c, 256 - c, "%s|", map[i]);
-	snprintf(buf + c - 1, 256 - c + 1, ")");
+		c += snprintf(buf + c, 256 - c, "%s | ", map[i]);
+	buf[c - 3] = '\0';
 }
 
 static char *type_str(enum option_type type)
@@ -256,13 +255,9 @@ static char *type_str(enum option_type type)
 		case TY_DOUBLE:
 			return "<float>";
 		case TY_ENUM:
-			static char enum_buf[256];
-			enum_str(enum_buf, colour_map, COLOUR_COUNT);
-			return enum_buf;
+			return "<colour enum>";
 		case TY_ATTRACTOR:
-			static char attractor_buf[256];
-			enum_str(attractor_buf, attractor_map, AT_COUNT);
-			return attractor_buf;
+			return "<attractor type enum>";
 		case TY_STRING:
 		case TY_COEFFICIENT:
 			return "<string>";
@@ -328,6 +323,26 @@ static void val_str(struct option *o, char buf[256])
 	}
 }
 
+static void align(char (*buf)[256], char (*left)[256], char (*right)[256], int height)
+{
+	int width = 0;
+	for (int i = 0; i < height; ++i)
+		width = MAX(width, (int)strlen(left[i]));
+
+	for (int i = 0; i < height; ++i)
+		snprintf(buf[i], 256, "%s%*s%s", left[i], width - (int)strlen(left[i]) + 2, "", right[i]);
+}
+
+static void join(char buf[256], char (*strs)[256], char *sep, int len)
+{
+	for (int i = 0, wrote = 0, c = 0; i < len; ++i) {
+		if (0 == strlen(strs[i]))
+			continue;
+		c += snprintf(buf + c, 256 - c, "%s%s", wrote ? sep : "", strs[i]);
+		wrote = 1;
+	}
+}
+
 static void help_option(enum option_mode mode)
 {
 	switch (mode) {
@@ -342,34 +357,38 @@ static void help_option(enum option_mode mode)
 			break;
 	}
 
-	int indent = 0;
+	// make left and right columns
+	char left[LENGTH(options)][256];
+	char right[LENGTH(options)][256];
+	int len = 0;
 	for (int i = 0; i < LENGTH(options); ++i) {
 		if (options[i].mode != mode)
 			continue;
-		char buf[256];
-		int c = snprintf(buf, 256, "  -%s %s", options[i].str, type_str(options[i].type));
-		indent = MAX(c, indent);
+
+		// left
+		snprintf(left[len], 256, "-%s %s", options[i].str, type_str(options[i].type));
+
+		// right
+		char strs[3][256] = {0};
+		if (options[i].doc)
+			strncpy(strs[0], options[i].doc, 256);
+		if (has_default(&options[i])) {
+			char tmp[256];
+			val_str(&options[i], tmp);
+			snprintf(strs[1], 256, "default: %s", tmp);
+		}
+		if (options[i].conflicts)
+			snprintf(strs[2], 256, "conflicts with -%s", options[options[i].conflicts].str);
+		join(right[len], strs, ", ", 3);
+
+		++len;
 	}
 
-	for (int i = 0; i < LENGTH(options); ++i) {
-		if (options[i].mode != mode)
-			continue;
-		int c = printf("  -%s %s", options[i].str, type_str(options[i].type));
-		printf("%*s  %s", indent - c, "", has_doc(&options[i]) ? options[i].doc : "");
-		if (has_default(&options[i])) {
-			if (has_doc(&options[i]))
-				printf(", ");
-			char buf[256];
-			val_str(&options[i], buf);
-			printf("default: %s", buf);
-		}
-		if (has_conflicts(&options[i])) {
-			if (has_default(&options[i]) || has_doc(&options[i]))
-				printf(", ");
-			printf("conficts with \"-%s\"", options[options[i].conflicts].str);
-		}
-		putchar('\n');
-	}
+	// align them and print
+	char (*buf)[256] = left;
+	align(buf, left, right, len);
+	for (int i = 0; i < len; ++i)
+		printf("  %s\n", buf[i]);
 }
 
 static void help(void)
@@ -381,6 +400,16 @@ static void help(void)
 	help_option(IMAGE);
 	help_option(VIDEO);
 	help_option(0); // common options
+
+	printf("\nenums\n");
+	char left[2][256] = {"<colour enum>", "<attractor type enum>"};
+	char right[2][256];
+	enum_str(right[0], colour_map, COLOUR_COUNT);
+	enum_str(right[1], attractor_map, AT_COUNT);
+	align(left, left, right, 2);
+	for (int i = 0; i < 2; ++i)
+		printf("  %s\n", left[i]);
+
 }
 
 static int parse_flag(char *flag)
