@@ -377,11 +377,11 @@ static void help(void)
 
 static int parse_flag(char *flag)
 {
-	if (strlen(flag) < 2 || flag[0] != '-' && flag[1] != '-')
+	if (strlen(flag) <= 1 || flag[0] != '-')
 		goto err;
 
 	for (int i = 0; i < LENGTH(options); ++i)
-		if (0 == strcmp(options[i].str, flag + 2))
+		if (0 == strcmp(options[i].str, flag + 1))
 			return i;
 
 err:

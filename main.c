@@ -751,7 +751,7 @@ static void load_config(struct config config_array[256], int *count)
 {
 	FILE *f = fopen(PARAMS, "r");
 	if (f == NULL) {
-		fprintf(stderr, "option error: --params could not open \"%s\"\n", PARAMS);
+		fprintf(stderr, "option error: -params could not open \"%s\"\n", PARAMS);
 		exit(1);
 	}
 
@@ -821,14 +821,14 @@ int main(int argc, char **argv)
 		case IMAGE:
 			if (PREVIEW && PARAMS) {
 				// TODO conflig resolution
-				fprintf(stderr, "option error: --params is not compatible with --preview\n");
+				fprintf(stderr, "option error: -params is not compatible with -preview\n");
 				exit(1);
 			} else if (PREVIEW) {
 				sample_attractor(PREVIEW);
 			} else if (COLOUR_PREVIEW) {
 				if (is_set(OP_COLOUR)) {
 					// TODO conflig resolution
-					fprintf(stderr, "option error: --colour_preview is not compatible with --preview\n");
+					fprintf(stderr, "option error: -colour_preview is not compatible with -preview\n");
 					exit(1);
 				}
 
