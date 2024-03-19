@@ -687,10 +687,13 @@ static void write_video(const char *params, int frames)
 {
 	struct config *config_array = malloc(sizeof(struct config) * frames);
 	set_video_params(params, config_array, frames);
+
+	char *LOSSY_OPTS = "-crf 17 -pix_fmt yuv420p";
+	char *LOSSLESS_OPTS = "-qp 0 -preset veryslow";
 	char buf[256];
 	snprintf(buf, 256,
 	         "ffmpeg.exe -loglevel error -y -f rawvideo -pix_fmt rgb24 -s %dx%d -r %d -i - "
-	         " -c:v libx264 -qp 0 images/out.mp4", WIDTH, HEIGHT, FPS);
+	         " -c:v libx264 %s images/out.mp4", WIDTH, HEIGHT, FPS, LOSSLESS ? LOSSLESS_OPTS : LOSSY_OPTS);
 	FILE *pipe = _popen(buf, "wb");
 
 	struct write_video_arg arg = {0};

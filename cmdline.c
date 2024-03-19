@@ -15,6 +15,7 @@ enum option_name {
 	OP_HEIGHT,
 	OP_INTENSITY,
 	OP_LIGHT,
+	OP_LOSSLESS,
 	OP_PARAMS,
 	OP_PREVIEW,
 	OP_QUALITY,
@@ -166,6 +167,14 @@ struct option options[] = {
 		.val.d = 0,
 		.set = true,
 	},
+	[OP_LOSSLESS] = {
+		.str = "lossless",
+		.type = TY_INT,
+		.doc = "enable lossless video compression",
+		.val.d = 0,
+		.mode = VIDEO,
+		.set = true,
+	},
 	[OP_PARAMS] = {
 		.str = "params",
 		.type = TY_STRING,
@@ -221,6 +230,7 @@ int CI, CJ, CN = 6;
 #define HEIGHT         options[OP_HEIGHT].val.d
 #define INTENSITY      options[OP_INTENSITY].val.f
 #define LIGHT          options[OP_LIGHT].val.d
+#define LOSSLESS       options[OP_LOSSLESS].val.d
 #define PARAMS         options[OP_PARAMS].val.s
 #define PREVIEW        options[OP_PREVIEW].val.d
 #define QUALITY        options[OP_QUALITY].val.d
@@ -443,6 +453,7 @@ static void parse_option(int mode, char *flag, char *val)
 			CASE(HEIGHT);
 			CASE(INTENSITY);
 			CASE(LIGHT);
+			CASE(LOSSLESS);
 			CASE(PREVIEW);
 			CASE(QUALITY);
 			CASE(START);
