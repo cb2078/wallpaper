@@ -6,7 +6,7 @@
 >.\main.exe
 usage
   attractor image [-colour-preview <int>] [common options]
-  attractor video [-coefficient <string>] [-duration <int>] [-end <float>] [-fps <int>]
+  attractor video [-coefficient <string>] [-duration <int>] [-end <float>] [-fps <int>] 
     [-lossless <int>] [-start <float>] [common options]
 
 image options
