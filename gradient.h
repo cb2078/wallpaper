@@ -1,5 +1,6 @@
 enum gradient {
-	KINDLMANN, INFERNO, BLACK_BODY, VIRIDIS, PLASMA,
+	KINDLMANN, INFERNO, BLACK_BODY, CMOCEAN_ICE,
+	VIRIDIS, PLASMA,
 	BuGn, BuPu, GnBu, OrRd, PuBu, PuBuGn, PuRd, RdPu, YlGn, YlGnBu, YlOrBr, YlOrRd,
 	NUM_GRADIENTS,
 };
@@ -26,20 +27,6 @@ double gradients[NUM_GRADIENTS][GN][3] = {
 	[YlGnBu] = {{12, 44, 132}, {34, 94, 168},  {29, 145, 192},  {65, 182, 196},  {127, 205, 187}, {199, 233, 180}, {237, 248, 177}, {255, 255, 217}},
 	[YlOrBr] = {{140, 45, 4},  {204, 76, 2},   {236, 112, 20},  {254, 153, 41},  {254, 196, 79},  {254, 227, 145}, {255, 247, 188}, {255, 255, 229}},
 	[YlOrRd] = {{177, 0, 38},  {227, 26, 28},  {252, 78, 42},   {253, 141, 60},  {254, 178, 76},  {254, 217, 118}, {255, 237, 160}, {255, 255, 204}},
+	//
+	[CMOCEAN_ICE] = {{7, 8, 16}, {16, 24, 45}, {24, 40, 74}, {53, 102, 148}, {82, 165, 222}, {127, 190, 234}, {172, 214, 246}, {204, 232, 250}},
 };
-
-#if 1
-static inline void set_brightness(double desired, double rgb1[3], double r[3])
-{
-	double dot = rgb1[0] * rgb1[0] + rgb1[1] * rgb1[1] + rgb1[2] * rgb1[2];
-	double mag = sqrt(dot);
-	if (mag == 0)
-		memcpy(r, rgb1, sizeof(double) * 3);
-	else
-		for (int k = 0; k < 3; ++k) {
-			r[k] = r[k] / mag * sqrt(pow(desired, 2) *3);
-			if (r[k] > 1)
-				r[k] = 1;
-		}
-}
-#endif

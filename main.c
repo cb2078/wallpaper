@@ -336,6 +336,32 @@ static void inv(double rgb[3])
 		rgb[k] = 1 - rgb[k];
 }
 
+static void set_brightness(double desired, double rgb1[3], double r[3])
+{
+#if 0
+	double h, s, l;
+	rgb_to_hsl(rgb1, &h, &s, &l);
+	hsl_to_rgb(h, s, desired, r);
+#else
+	double dot = rgb1[0] * rgb1[0] + rgb1[1] * rgb1[1] + rgb1[2] * rgb1[2];
+	double mag = sqrt(dot);
+	if (mag == 0)
+		memcpy(r, rgb1, sizeof(double) * 3);
+	else
+		for (int k = 0; k < 3; ++k) {
+			r[k] = r[k] / mag * sqrt(pow(desired, 2) *3);
+			if (r[k] > 1)
+				r[k] = 1;
+		}
+#endif
+}
+
+static void lerp(double result[3], double left[3], double right[3], double t)
+{
+	for (int k = 0; k < 3; ++k)
+		result[k] = (1 -t ) * left[k] + t * right[k];
+}
+
 #define BUF(i, j, k) buf[(i) * WIDTH * 3 + (j) * 3 + (k)]
 #define BIG_BUF(i, j, k) big_buf[(i) * D_WIDTH * 3 + (j) * 3 + (k)]
 #define INFO(i, j, k) info[(i) * D_WIDTH * 4 + (j) * 4 + (k)]
@@ -447,10 +473,10 @@ static void render_image(struct config *conf, unsigned char *buf)
 					double g = (LIGHT ? 1 - v : v) * (GN - 1);
 					double t = fmod(g, 1);
 					int l = (int)floor(g), r = (int)ceil(g);
-					for (int k = 0; k < 3; ++k) {
-						double a = t * gradients[conf->colour][r][k] + (1 - t) * gradients[conf->colour][l][k];
-						BIG_BUF(i, j, k) = (char)a;
-					}
+					double rgb[3];
+					lerp(rgb, gradients[conf->colour][l], gradients[conf->colour][r], t);
+					for (int k = 0; k < 3; ++k)
+						BIG_BUF(i, j, k) = (char)rgb[k];
 					break;
 				}
 			}
@@ -467,10 +493,10 @@ static void render_image(struct config *conf, unsigned char *buf)
 #if 0
 	// write debug gradient map
 	for (int j = 0; j < MIN(600, D_HEIGHT); ++j) {
-		double x = (double)j / 600 * (GN - 1);
-		double t = fmod(x, 1);
-		int l = floor(x);
-		int r = ceil(x);
+		double v = (double)j / 600 * (GN - 1);
+		double t = fmod(v, 1);
+		int l = (int)floor(v);
+		int r = (int)ceil(v);
 		for (int i = 0; i < 20; ++i)
 			for (int k = 0; k < 3; ++k)
 				BUF(i, j, k) = (char)((1 - t) * gradients[conf->colour][l][k] + t * gradients[conf->colour][r][k]);
