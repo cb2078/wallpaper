@@ -27,6 +27,7 @@ common options
   -height <int>                default: 720
   -intensity <float>           how bright the iterations make each pixel, default: 50.000
   -light <int>                 render in light mode, default: 0
+  -out-dir <string>            directory to write files to, must end with trailing '/'
   -params <string>             file containing parameters, conflicts with -preview
   -preview <int>               show grid of some thumbnails
   -quality <int>               how many iterations to do per pixel, default: 25

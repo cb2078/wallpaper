@@ -16,6 +16,7 @@ enum option_name {
 	OP_INTENSITY,
 	OP_LIGHT,
 	OP_LOSSLESS,
+	OP_OUT_DIR,
 	OP_PARAMS,
 	OP_PREVIEW,
 	OP_QUALITY,
@@ -174,6 +175,12 @@ struct option options[] = {
 		.mode = VIDEO,
 		.set = true,
 	},
+	[OP_OUT_DIR] = {
+		.str = "out-dir",
+		.type = TY_STRING,
+		.doc = "directory to write files to, must end with trailing '/'",
+		.val.s = "",
+	},
 	[OP_PARAMS] = {
 		.str = "params",
 		.type = TY_STRING,
@@ -230,6 +237,7 @@ int CI, CJ, CN = 6;
 #define INTENSITY      options[OP_INTENSITY].val.f
 #define LIGHT          options[OP_LIGHT].val.d
 #define LOSSLESS       options[OP_LOSSLESS].val.d
+#define OUT_DIR        options[OP_OUT_DIR].val.s
 #define PARAMS         options[OP_PARAMS].val.s
 #define PREVIEW        options[OP_PREVIEW].val.d
 #define QUALITY        options[OP_QUALITY].val.d
@@ -523,6 +531,9 @@ static void parse_option(int mode, char *flag, char *val)
 			} break;
 			case OP_PARAMS:
 				PARAMS = val;
+				break;
+			case OP_OUT_DIR:
+				OUT_DIR = val;
 				break;
 		}
 

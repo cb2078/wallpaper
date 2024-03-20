@@ -566,7 +566,7 @@ static int write_samples(char name[], struct config *config_array, int samples)
 	memset(buf, 0x7f, sizeof(char) * w * h * 3);
 
 	char txt[256];
-	snprintf(txt, 256, "images/%s.txt", name);
+	snprintf(txt, 256, "%s%s.txt", OUT_DIR, name);
 	FILE *f = fopen(txt, "w");
 	for (int s = 0; s < samples; ++s) {
 		char params[256];
@@ -587,7 +587,7 @@ static int write_samples(char name[], struct config *config_array, int samples)
 	putchar('\n');
 
 	char png[256];
-	snprintf(png, 256, "images/%s.png", name);
+	snprintf(png, 256, "%s%s.png", OUT_DIR, name);
 	int result = write_image(png, w, h, buf);
 	free(buf);
 	return result;
@@ -617,7 +617,7 @@ static DWORD WINAPI write_attractors_callback(void *arg_)
 			break;
 
 		char name[256];
-		snprintf(name, 256, "images/%d.png", s);
+		snprintf(name, 256, "%s%d.png", OUT_DIR, s);
 		render_image(&arg->config_array[s], buf);
 		write_image(name, WIDTH, HEIGHT, buf);
 	}
@@ -731,7 +731,7 @@ static void write_video(const char *params, int frames)
 	char buf[256];
 	snprintf(buf, 256,
 	         "ffmpeg.exe -loglevel error -y -f rawvideo -pix_fmt rgb24 -s %dx%d -r %d -i - "
-	         " -c:v libx264 %s images/out.mp4", WIDTH, HEIGHT, FPS, LOSSLESS ? LOSSLESS_OPTS : LOSSY_OPTS);
+	         " -c:v libx264 %s %sout.mp4", WIDTH, HEIGHT, FPS, LOSSLESS ? LOSSLESS_OPTS : LOSSY_OPTS, OUT_DIR);
 	FILE *pipe = _popen(buf, "wb");
 
 	struct write_video_arg arg = {0};
@@ -744,12 +744,14 @@ static void write_video(const char *params, int frames)
 	printf("rendered in %lld seconds\n", time(NULL) - arg.start);
 
 	_pclose(pipe);
-	puts("wrote images/out.mp4");
+	printf("wrote %sout.mp4", OUT_DIR);
 
 	// write a thumbnail
 	struct config conf;
 	set_config(&conf, params);
-	write_attractor("images/thumbnail.png", &conf);
+	char name[256];
+	snprintf(name, 256, "%sthumbnail.png", OUT_DIR);
+	write_attractor(name, &conf);
 
 	free(config_array);
 }
@@ -897,7 +899,7 @@ int main(int argc, char **argv)
 				char buf[256];
 				str_c(conf.c, buf);
 				char name[256];
-				snprintf(name, 256, "images/single.png");
+				snprintf(name, 256, "%ssingle.png", OUT_DIR);
 				write_attractor(name, &conf);
 			}
 			break;
