@@ -42,7 +42,7 @@ static void run_jobs(DWORD WINAPI callback(void *), void *arg)
 }
 
 unsigned CUTOFF = 10000;
-unsigned ITERATIONS;
+long long unsigned ITERATIONS;
 
 #define MAX(x, y)	((x) > (y) ? (x) : (y))
 #define MIN(x, y)	((x) < (y) ? (x) : (y))
@@ -858,7 +858,7 @@ int main(int argc, char **argv)
 	assert(argc % 2 == 0);
 	for (int i = 2; i < argc; i += 2)
 		parse_option(mode, argv[i], argv[i + 1]);
-	ITERATIONS = WIDTH * HEIGHT * QUALITY;
+	ITERATIONS = WIDTH * HEIGHT * (unsigned long long)QUALITY;
 
 	switch (mode) {
 		case IMAGE:
