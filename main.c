@@ -41,8 +41,7 @@ static void run_jobs(DWORD WINAPI callback(void *), void *arg)
 	free(threads);
 }
 
-unsigned CUTOFF = 10000;
-long long unsigned ITERATIONS;
+long long unsigned CUTOFF = 10000, ITERATIONS;
 
 #define MAX(x, y)	((x) > (y) ? (x) : (y))
 #define MIN(x, y)	((x) < (y) ? (x) : (y))
@@ -392,7 +391,7 @@ static void render_image(struct config *conf, unsigned char *buf)
 	}
 
 	unsigned count = 0;
-	for (unsigned n = CUTOFF; n < ITERATIONS; ++n) {
+	for (long long unsigned n = CUTOFF; n < ITERATIONS; ++n) {
 		vec x_last;
 		vec v;
 		for (int i = 0; i < 2; ++i)
