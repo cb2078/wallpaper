@@ -142,7 +142,7 @@ void set_event(event_handle handle)
 {
 	pthread_mutex_lock(&handle->lock);
 	handle->triggered = true;
-	pthread_cond_signal(&handle->cond);
+	pthread_cond_broadcast(&handle->cond);
 	pthread_mutex_unlock(&handle->lock);
 }
 
