@@ -723,9 +723,14 @@ static void write_video(const char *params, int frames)
 	char *LOSSLESS_OPTS = "-qp 0 -preset veryslow";
 	char buf[256];
 	snprintf(buf, 256,
-	         "ffmpeg.exe -loglevel error -y -f rawvideo -pix_fmt rgb24 -s %dx%d -r %d -i - "
+	         "ffmpeg -loglevel error -y -f rawvideo -pix_fmt rgb24 -s %dx%d -r %d -i - "
 	         " -c:v libx264 %s %sout.mp4", WIDTH, HEIGHT, FPS, LOSSLESS ? LOSSLESS_OPTS : LOSSY_OPTS, OUT_DIR);
-	FILE *pipe = popen(buf, "wb");
+#ifdef _WIN64
+	char *mode = "wb";
+#else
+	char *mode = "w";
+#endif
+	FILE *pipe = popen(buf, mode);
 
 	struct write_video_arg arg = {0};
 	arg.thread_info.entry_count = frames;
