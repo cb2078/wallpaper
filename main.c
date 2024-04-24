@@ -47,7 +47,7 @@ long long unsigned CUTOFF = 10000, ITERATIONS;
 #define MIN(x, y)	((x) < (y) ? (x) : (y))
 #define LENGTH(a)	(sizeof(a) / sizeof(a[0]))
 
-#include "cmdline.c"
+#include "cmdline.h"
 #include "gradient.h"
 
 typedef double coef[8][2];
@@ -690,6 +690,7 @@ struct write_video_arg {
 	struct config *config_array;
 	time_t start;
 	FILE *pipe;
+	HANDLE event;
 };
 
 static DWORD WINAPI write_video_callback(void *arg_)
@@ -705,15 +706,15 @@ static DWORD WINAPI write_video_callback(void *arg_)
 		render_image(&arg->config_array[s], buf);
 
 		// wait until it's out to to write the image
-		int undesired = -1;
 		while (s != arg->thread_info.back)
-			WaitOnAddress(&arg->thread_info.back, &undesired, sizeof(int), INFINITE);
+			WaitForSingleObject(arg->event, INFINITE);
+		ResetEvent(arg->event);
 		fwrite(buf, sizeof(char) * HEIGHT * WIDTH * 3, 1, arg->pipe);
 		++arg->thread_info.back;
 		progress(arg->thread_info.back, arg->thread_info.entry_count, time(NULL) - arg->start);
 
 		// notify other threads when we're done
-		WakeByAddressAll((void *)&arg->thread_info.back);
+		SetEvent(arg->event);
 	}
 
 	free(buf);
@@ -738,6 +739,10 @@ static void write_video(const char *params, int frames)
 	arg.config_array = config_array;
 	arg.pipe = pipe;
 	arg.start = time(NULL);
+	arg.event = CreateEvent(NULL,  // default security attributes
+	                        true,  // manual-reset event
+	                        false, // initial state is nonsignaled
+	                        NULL); // object name
 	run_jobs(write_video_callback, (void *)&arg);
 	putchar('\n');
 	printf("rendered in %lld seconds\n", time(NULL) - arg.start);
