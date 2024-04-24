@@ -14,8 +14,7 @@
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include "stb_image_resize2.h"
 
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "platform.h"
 
 int THREAD_COUNT;
 
@@ -25,19 +24,19 @@ struct work_queue_info {
 	volatile int back;
 };
 
-static void run_jobs(DWORD WINAPI callback(void *), void *arg)
+static void run_jobs(thread_callback callback, thread_arg arg)
 {
 	// create threads
-	HANDLE *threads = malloc(sizeof(HANDLE) * THREAD_COUNT);
+	thread_handle *threads = malloc(sizeof(thread_handle) * THREAD_COUNT);
 	for (int i = 0; i < THREAD_COUNT; ++i)
-		threads[i] = CreateThread(0, 0, callback, arg, 0, 0);
+		threads[i] = create_thread(callback, arg);
 
 	// wait for the work to be done
-	WaitForMultipleObjects(THREAD_COUNT, threads, true, INFINITE);
+	wait_for_multiple_threads(threads, THREAD_COUNT);
 
 	// close the thread handless
 	for (int i = 0; i < THREAD_COUNT; ++i)
-		CloseHandle(threads[i]);
+		close_thread(threads[i]);
 	free(threads);
 }
 
@@ -531,13 +530,13 @@ struct write_samples_arg {
 };
 
 
-static DWORD WINAPI write_samples_callback(void *arg_)
+static void write_samples_callback(void *arg_)
 {
 	struct write_samples_arg *arg = (struct write_samples_arg *)arg_;
 	unsigned char *buf = malloc(sizeof(char) * HEIGHT * WIDTH * 3);
 
 	while (arg->thread_info.next_entry < arg->thread_info.entry_count) {
-		int s = InterlockedIncrement((long *)&arg->thread_info.next_entry) - 1;
+		int s = interlocked_increment((long *)&arg->thread_info.next_entry) - 1;
 		if (s >= arg->thread_info.next_entry)
 			break;
 
@@ -548,12 +547,11 @@ static DWORD WINAPI write_samples_callback(void *arg_)
 #define SBUF(i, j, k) arg->buf[(i) * arg->w * 3 + (j) * 3 + (k)]
 			memcpy(&SBUF(i * HEIGHT + k, j * WIDTH, 0), &BUF(k, 0, 0), sizeof(char) * WIDTH * 3);
 
-		int b = InterlockedIncrement((long *)&arg->thread_info.back);
+		int b = interlocked_increment((long *)&arg->thread_info.back);
 		progress(b, arg->thread_info.entry_count, time(NULL) - arg->start);
 	}
 
 	free(buf);
-	return 0;
 }
 
 static int write_samples(char name[], struct config *config_array, int samples)
@@ -605,13 +603,13 @@ struct write_attractors_arg {
 	struct config *config_array;
 };
 
-static DWORD WINAPI write_attractors_callback(void *arg_)
+static void write_attractors_callback(void *arg_)
 {
 	struct write_attractors_arg *arg = (struct write_attractors_arg *)arg_;
 	unsigned char *buf = malloc(sizeof(char) * HEIGHT * WIDTH * 3);
 
 	while (arg->thread_info.next_entry < arg->thread_info.entry_count) {
-		int s = InterlockedIncrement((long *)&arg->thread_info.next_entry) - 1;
+		int s = interlocked_increment((long *)&arg->thread_info.next_entry) - 1;
 		if (s >= arg->thread_info.next_entry)
 			break;
 
@@ -622,7 +620,6 @@ static DWORD WINAPI write_attractors_callback(void *arg_)
 	}
 
 	free(buf);
-	return 0;
 }
 
 static void write_attractors(struct config *config_array, int count)
@@ -690,16 +687,16 @@ struct write_video_arg {
 	struct config *config_array;
 	time_t start;
 	FILE *pipe;
-	HANDLE event;
+	event_handle event;
 };
 
-static DWORD WINAPI write_video_callback(void *arg_)
+static void write_video_callback(void *arg_)
 {
 	struct write_video_arg *arg = (struct write_video_arg *)arg_;
 	unsigned char *buf = malloc(sizeof(char) * HEIGHT * WIDTH * 3);
 
 	while (arg->thread_info.next_entry < arg->thread_info.entry_count) {
-		int s = InterlockedIncrement((long *)&arg->thread_info.next_entry) - 1;
+		int s = interlocked_increment((long *)&arg->thread_info.next_entry) - 1;
 		if (s >= arg->thread_info.next_entry)
 			break;
 
@@ -707,18 +704,17 @@ static DWORD WINAPI write_video_callback(void *arg_)
 
 		// wait until it's out to to write the image
 		while (s != arg->thread_info.back)
-			WaitForSingleObject(arg->event, INFINITE);
-		ResetEvent(arg->event);
+			wait_for_event(arg->event);
+		reset_event(arg->event);
 		fwrite(buf, sizeof(char) * HEIGHT * WIDTH * 3, 1, arg->pipe);
 		++arg->thread_info.back;
 		progress(arg->thread_info.back, arg->thread_info.entry_count, time(NULL) - arg->start);
 
 		// notify other threads when we're done
-		SetEvent(arg->event);
+		set_event(arg->event);
 	}
 
 	free(buf);
-	return 0;
 }
 
 static void write_video(const char *params, int frames)
@@ -732,22 +728,19 @@ static void write_video(const char *params, int frames)
 	snprintf(buf, 256,
 	         "ffmpeg.exe -loglevel error -y -f rawvideo -pix_fmt rgb24 -s %dx%d -r %d -i - "
 	         " -c:v libx264 %s %sout.mp4", WIDTH, HEIGHT, FPS, LOSSLESS ? LOSSLESS_OPTS : LOSSY_OPTS, OUT_DIR);
-	FILE *pipe = _popen(buf, "wb");
+	FILE *pipe = popen(buf, "wb");
 
 	struct write_video_arg arg = {0};
 	arg.thread_info.entry_count = frames;
 	arg.config_array = config_array;
 	arg.pipe = pipe;
 	arg.start = time(NULL);
-	arg.event = CreateEvent(NULL,  // default security attributes
-	                        true,  // manual-reset event
-	                        false, // initial state is nonsignaled
-	                        NULL); // object name
+	arg.event = create_event();
 	run_jobs(write_video_callback, (void *)&arg);
 	putchar('\n');
-	printf("rendered in %lld seconds\n", time(NULL) - arg.start);
+	printf("rendered in %lld seconds\n", (long long)(time(NULL) - arg.start));
 
-	_pclose(pipe);
+	pclose(pipe);
 	printf("wrote %sout.mp4", OUT_DIR);
 
 	// write a thumbnail
@@ -834,12 +827,7 @@ int main(int argc, char **argv)
 
 	srand((unsigned int)time(NULL));
 
-	// thread count
-	{
-		SYSTEM_INFO sysinfo;
-		GetSystemInfo(&sysinfo);
-		THREAD_COUNT = sysinfo.dwNumberOfProcessors - 1;
-	}
+	THREAD_COUNT = platform_thread_count() - 1;
 
 	// print help if no args
 	if (argc <= 1) {
