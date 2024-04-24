@@ -88,16 +88,17 @@ void *callback_wrapper(void *arg_)
 {
 	struct arg_wrapper *arg = arg_;
 	arg->callback(arg->arg);
+	free(arg_);
 	pthread_exit(NULL);
 }
 
 thread_handle create_thread(thread_callback *callback, thread_arg arg)
 {
-	struct arg_wrapper arg_ = {0};
-	arg_.callback = callback;
-	arg_.arg = arg;
+	struct arg_wrapper *arg_ = malloc(sizeof(struct arg_wrapper));
+	arg_->callback = callback;
+	arg_->arg = arg;
 	thread_handle handle;
-	pthread_create(&handle, NULL, callback_wrapper, &arg_);
+	pthread_create(&handle, NULL, callback_wrapper, (void *)arg_);
 	return handle;
 }
 
