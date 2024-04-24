@@ -22,6 +22,7 @@ enum option_name {
 	OP_QUALITY,
 	OP_START,
 	OP_STRETCH,
+	OP_THREADS,
 	OP_TYPE,
 	OP_WIDTH,
 };
@@ -212,6 +213,11 @@ struct option options[] = {
 		.val.d = 0,
 		.set = true,
 	},
+	[OP_THREADS] = {
+		.str = "thread-count",
+		.type = TY_INT,
+		.doc = "number of threads to use",
+	},
 	[OP_TYPE] = {
 		.str = "type",
 		.type = TY_ATTRACTOR,
@@ -243,6 +249,7 @@ int CI, CJ, CN = 6;
 #define QUALITY        options[OP_QUALITY].val.d
 #define START          options[OP_START].val.f
 #define STRETCH        options[OP_STRETCH].val.d
+#define THREADS        options[OP_THREADS].val.d
 #define TYPE           options[OP_TYPE].val.d
 #define WIDTH          options[OP_WIDTH].val.d
 
@@ -494,6 +501,7 @@ static void parse_option(int mode, char *flag, char *val)
 			CASE(QUALITY);
 			CASE(START);
 			CASE(STRETCH);
+			CASE(THREADS);
 			CASE(WIDTH);
 #undef CASE
 			case OP_COLOUR:

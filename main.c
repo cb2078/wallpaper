@@ -14,9 +14,13 @@
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include "stb_image_resize2.h"
 
-#include "platform.h"
+#define MAX(x, y)	((x) > (y) ? (x) : (y))
+#define MIN(x, y)	((x) < (y) ? (x) : (y))
+#define LENGTH(a)	(sizeof(a) / sizeof(a[0]))
 
-int THREAD_COUNT;
+#include "platform.h"
+#include "cmdline.h"
+#include "gradient.h"
 
 struct work_queue_info {
 	volatile int next_entry;
@@ -27,27 +31,20 @@ struct work_queue_info {
 static void run_jobs(thread_callback callback, thread_arg arg)
 {
 	// create threads
-	thread_handle *threads = malloc(sizeof(thread_handle) * THREAD_COUNT);
-	for (int i = 0; i < THREAD_COUNT; ++i)
+	thread_handle *threads = malloc(sizeof(thread_handle) * THREADS);
+	for (int i = 0; i < THREADS; ++i)
 		threads[i] = create_thread(callback, arg);
 
 	// wait for the work to be done
-	wait_for_multiple_threads(threads, THREAD_COUNT);
+	wait_for_multiple_threads(threads, THREADS);
 
 	// close the thread handless
-	for (int i = 0; i < THREAD_COUNT; ++i)
+	for (int i = 0; i < THREADS; ++i)
 		close_thread(threads[i]);
 	free(threads);
 }
 
 long long unsigned CUTOFF = 10000, ITERATIONS;
-
-#define MAX(x, y)	((x) > (y) ? (x) : (y))
-#define MIN(x, y)	((x) < (y) ? (x) : (y))
-#define LENGTH(a)	(sizeof(a) / sizeof(a[0]))
-
-#include "cmdline.h"
-#include "gradient.h"
 
 typedef double coef[8][2];
 typedef double vec[2];
@@ -827,12 +824,16 @@ int main(int argc, char **argv)
 
 	srand((unsigned int)time(NULL));
 
-	THREAD_COUNT = platform_thread_count() - 1;
-
 	// print help if no args
 	if (argc <= 1) {
 		help();
 		exit(0);
+	}
+
+	// set number of threads
+	if (!is_set(OP_THREADS)) {
+		THREADS = platform_thread_count() - 1;
+		options[OP_THREADS].set = true;
 	}
 
 	// get the mode

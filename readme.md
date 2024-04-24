@@ -32,6 +32,7 @@ common options
   -preview <int>               show grid of some thumbnails
   -quality <int>               how many iterations to do per pixel, default: 25
   -stretch <int>               weather to stretch the fractal, default: 0
+  -thread-count <int>          number of threads to use
   -type <attractor type enum>  default: POLY
   -width <int>                 default: 1280
 
