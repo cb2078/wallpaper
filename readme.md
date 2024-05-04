@@ -21,7 +21,7 @@ video options
   -start <float>         start value for coefficient
 
 common options
-  -border <float>              default: 0.050
+  -border <float>              (a negative value will crop the image), default: 0.050
   -colour <colour enum>        how to colour the attractor, conflicts with -colour
   -downscale <int>             downscale from an image <downscale> times larger, default: 1
   -height <int>                default: 720

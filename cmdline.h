@@ -95,6 +95,7 @@ struct option options[] = {
 		.str = "border",
 		.type = TY_DOUBLE,
 		.val.f = 0.05f,
+		.doc = "(a negative value will crop the image)",
 		.set = true,
 	},
 	[OP_COEFFICIENT] = {
