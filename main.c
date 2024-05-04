@@ -860,19 +860,13 @@ int main(int argc, char **argv)
 
 	switch (mode) {
 		case IMAGE:
-			if (PREVIEW && PARAMS) {
-				// TODO conflig resolution
-				fprintf(stderr, "option error: -params is not compatible with -preview\n");
-				exit(1);
-			} else if (PREVIEW) {
+			if (PREVIEW && PARAMS)
+				option_conflict_error(OP_PREVIEW, OP_PARAMS);
+			 else if (PREVIEW) {
 				sample_attractor(PREVIEW);
 			} else if (COLOUR_PREVIEW) {
-				if (is_set(OP_COLOUR)) {
-					// TODO conflig resolution
-					fprintf(stderr, "option error: -colour_preview is not compatible with -preview\n");
-					exit(1);
-				}
-
+				if (is_set(OP_COLOUR))
+					option_conflict_error(OP_COLOUR, OP_PREVIEW);
 				struct config config_array[COLOUR_COUNT];
 				int count = 1;
 				if (PARAMS)

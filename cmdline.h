@@ -452,6 +452,12 @@ static void option_type_error(char *flag, char type, char *val)
 	option_error(flag, type_str(type), val);
 }
 
+static void option_conflict_error(enum option_name x, enum option_name y)
+{
+	fprintf(stderr, "option error: -%s is not compatible with -%s\n", options[x].str, options[y].str);
+	exit(1);
+}
+
 static void nyi(char *flag)
 {
 	fprintf(stderr, "%s not yet implemented\n", flag);
